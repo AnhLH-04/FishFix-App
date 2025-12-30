@@ -1,0 +1,517 @@
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Image,
+    Alert,
+    ScrollView,
+    ActivityIndicator,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { analyzeImage } from '../services/aiService';
+
+const AIDiagnosisScreen = ({ navigation }) => {
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [diagnosis, setDiagnosis] = useState(null);
+
+    const requestPermissions = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert(
+                'Quyền truy cập',
+                'Ứng dụng cần quyền truy cập thư viện ảnh để hoạt động.'
+            );
+            return false;
+        }
+        return true;
+    };
+
+    const pickImage = async () => {
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setSelectedImage(result.assets[0].uri);
+            setDiagnosis(null);
+        }
+    };
+
+    const takePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert(
+                'Quyền truy cập',
+                'Ứng dụng cần quyền truy cập camera để hoạt động.'
+            );
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setSelectedImage(result.assets[0].uri);
+            setDiagnosis(null);
+        }
+    };
+
+    const handleAnalyze = async () => {
+        if (!selectedImage) {
+            Alert.alert('Thông báo', 'Vui lòng chọn ảnh để phân tích');
+            return;
+        }
+
+        setIsAnalyzing(true);
+        try {
+            const result = await analyzeImage(selectedImage);
+            setDiagnosis(result);
+        } catch (error) {
+            Alert.alert('Lỗi', 'Không thể phân tích ảnh. Vui lòng thử lại.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleBookTechnician = () => {
+        if (diagnosis) {
+            navigation.navigate('TechnicianList', {
+                category: diagnosis.category,
+                problem: diagnosis.problem,
+            });
+        }
+    };
+
+    return (
+        <ScrollView style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>AI Chẩn Đoán Sự Cố</Text>
+                <View style={{ width: 40 }} />
+            </View>
+
+            {/* Info Card */}
+            <View style={styles.infoCard}>
+                <Ionicons name="information-circle" size={24} color="#1E88E5" />
+                <Text style={styles.infoText}>
+                    Chụp hoặc tải ảnh sự cố, AI sẽ phân tích và gợi ý giải pháp cho bạn
+                </Text>
+            </View>
+
+            {/* Image Selection */}
+            <View style={styles.imageSection}>
+                {selectedImage ? (
+                    <View style={styles.imageContainer}>
+                        <Image source={{ uri: selectedImage }} style={styles.image} />
+                        <TouchableOpacity
+                            style={styles.removeImageBtn}
+                            onPress={() => {
+                                setSelectedImage(null);
+                                setDiagnosis(null);
+                            }}
+                        >
+                            <Ionicons name="close-circle" size={30} color="#EF5350" />
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={styles.placeholderContainer}>
+                        <Ionicons name="image-outline" size={80} color="#ccc" />
+                        <Text style={styles.placeholderText}>
+                            Chưa có ảnh nào được chọn
+                        </Text>
+                    </View>
+                )}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.actionBtn} onPress={takePhoto}>
+                    <Ionicons name="camera" size={24} color="#fff" />
+                    <Text style={styles.actionBtnText}>Chụp Ảnh</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={pickImage}>
+                    <Ionicons name="images" size={24} color="#fff" />
+                    <Text style={styles.actionBtnText}>Chọn Từ Thư Viện</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Analyze Button */}
+            <TouchableOpacity
+                style={[
+                    styles.analyzeButton,
+                    (!selectedImage || isAnalyzing) && styles.analyzeButtonDisabled,
+                ]}
+                onPress={handleAnalyze}
+                disabled={!selectedImage || isAnalyzing}
+            >
+                {isAnalyzing ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <>
+                        <Ionicons name="analytics" size={24} color="#fff" />
+                        <Text style={styles.analyzeButtonText}>Phân Tích Ngay</Text>
+                    </>
+                )}
+            </TouchableOpacity>
+
+            {/* Diagnosis Results */}
+            {diagnosis && (
+                <View style={styles.resultsContainer}>
+                    <Text style={styles.resultsTitle}>📋 Kết Quả Phân Tích</Text>
+
+                    <View style={styles.resultCard}>
+                        <View style={styles.resultRow}>
+                            <Text style={styles.resultLabel}>Loại Thiết Bị:</Text>
+                            <Text style={styles.resultValue}>{diagnosis.category}</Text>
+                        </View>
+                        <View style={styles.resultRow}>
+                            <Text style={styles.resultLabel}>Vấn Đề:</Text>
+                            <Text style={styles.resultValue}>{diagnosis.problem}</Text>
+                        </View>
+                        <View style={styles.resultRow}>
+                            <Text style={styles.resultLabel}>Mức Độ:</Text>
+                            <View
+                                style={[
+                                    styles.severityBadge,
+                                    {
+                                        backgroundColor:
+                                            diagnosis.severity === 'Cao'
+                                                ? '#EF5350'
+                                                : diagnosis.severity === 'Trung Bình'
+                                                    ? '#FFA726'
+                                                    : '#66BB6A',
+                                    },
+                                ]}
+                            >
+                                <Text style={styles.severityText}>{diagnosis.severity}</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.solutionCard}>
+                        <Text style={styles.solutionTitle}>💡 Giải Pháp Đề Xuất</Text>
+                        <Text style={styles.solutionText}>{diagnosis.solution}</Text>
+                    </View>
+
+                    <View style={styles.costCard}>
+                        <Text style={styles.costLabel}>Chi Phí Ước Tính:</Text>
+                        <Text style={styles.costValue}>{diagnosis.estimatedCost}</Text>
+                    </View>
+
+                    {/* Recommended Technicians */}
+                    <View style={styles.technicianPreview}>
+                        <Text style={styles.technicianPreviewTitle}>
+                            🔧 Thợ Gợi Ý Cho Bạn
+                        </Text>
+                        {diagnosis.recommendedTechnicians.map((tech, index) => (
+                            <View key={index} style={styles.techCard}>
+                                <View style={styles.techInfo}>
+                                    <Text style={styles.techName}>{tech.name}</Text>
+                                    <View style={styles.techRating}>
+                                        <Ionicons name="star" size={14} color="#FFD700" />
+                                        <Text style={styles.techRatingText}>{tech.rating}</Text>
+                                        <Text style={styles.techJobs}>({tech.jobs} công việc)</Text>
+                                    </View>
+                                    <Text style={styles.techSpecialty}>{tech.specialty}</Text>
+                                </View>
+                                <Text style={styles.techPrice}>{tech.price}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.bookButton}
+                        onPress={handleBookTechnician}
+                    >
+                        <Text style={styles.bookButtonText}>Đặt Lịch Ngay</Text>
+                        <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            )}
+        </ScrollView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f8f9fa',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 50,
+        paddingBottom: 20,
+        backgroundColor: '#fff',
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    infoCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E3F2FD',
+        margin: 20,
+        padding: 16,
+        borderRadius: 12,
+        gap: 12,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1976D2',
+        lineHeight: 20,
+    },
+    imageSection: {
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    imageContainer: {
+        position: 'relative',
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    image: {
+        width: '100%',
+        height: 300,
+        borderRadius: 16,
+    },
+    removeImageBtn: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+    },
+    placeholderContainer: {
+        height: 300,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    placeholderText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#999',
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    actionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#1E88E5',
+        padding: 16,
+        borderRadius: 12,
+        elevation: 2,
+    },
+    actionBtnText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    analyzeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#1E88E5',
+        marginHorizontal: 20,
+        padding: 16,
+        borderRadius: 12,
+        elevation: 3,
+        marginBottom: 20,
+    },
+    analyzeButtonDisabled: {
+        backgroundColor: '#ccc',
+    },
+    analyzeButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    resultsContainer: {
+        padding: 20,
+    },
+    resultsTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 16,
+    },
+    resultCard: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        elevation: 2,
+    },
+    resultRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    resultLabel: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    resultValue: {
+        fontSize: 14,
+        color: '#333',
+        fontWeight: '600',
+    },
+    severityBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    severityText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    solutionCard: {
+        backgroundColor: '#FFF9E6',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    solutionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FFA726',
+        marginBottom: 8,
+    },
+    solutionText: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 22,
+    },
+    costCard: {
+        backgroundColor: '#E8F5E9',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    costLabel: {
+        fontSize: 14,
+        color: '#2E7D32',
+        fontWeight: '500',
+    },
+    costValue: {
+        fontSize: 18,
+        color: '#2E7D32',
+        fontWeight: 'bold',
+    },
+    technicianPreview: {
+        marginBottom: 16,
+    },
+    technicianPreviewTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 12,
+    },
+    techCard: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 8,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        elevation: 1,
+    },
+    techInfo: {
+        flex: 1,
+    },
+    techName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 4,
+    },
+    techRating: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    techRatingText: {
+        fontSize: 12,
+        color: '#333',
+        fontWeight: '500',
+    },
+    techJobs: {
+        fontSize: 12,
+        color: '#999',
+    },
+    techSpecialty: {
+        fontSize: 12,
+        color: '#666',
+    },
+    techPrice: {
+        fontSize: 14,
+        color: '#1E88E5',
+        fontWeight: 'bold',
+    },
+    bookButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#2196F3',
+        padding: 16,
+        borderRadius: 12,
+        elevation: 3,
+    },
+    bookButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+});
+
+export default AIDiagnosisScreen;
