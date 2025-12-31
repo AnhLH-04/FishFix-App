@@ -3,8 +3,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
-// Screens
+// Auth Screens
+import RoleSelectionScreen from '../screens/RoleSelectionScreen';
+import LoginScreen from '../screens/LoginScreen';
+
+// Customer Screens
 import HomeScreen from '../screens/HomeScreen';
 import AIDiagnosisScreen from '../screens/AIDiagnosisScreen';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen';
@@ -20,10 +25,25 @@ import NearbyTechniciansScreen from '../screens/NearbyTechniciansScreen';
 import InstantBookingScreen from '../screens/InstantBookingScreen';
 import InstantBookingConfirmationScreen from '../screens/InstantBookingConfirmationScreen';
 
+// Technician Screens
+import TechnicianHomeScreen from '../screens/TechnicianHomeScreen';
+import TechnicianProfileScreen from '../screens/TechnicianProfileScreen';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const AuthStack = createStackNavigator();
 
-// Home Stack Navigator
+// Auth Navigator
+function AuthNavigator() {
+    return (
+        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+            <AuthStack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <AuthStack.Screen name="Login" component={LoginScreen} />
+        </AuthStack.Navigator>
+    );
+}
+
+// Home Stack Navigator (Customer)
 function HomeStack() {
     return (
         <Stack.Navigator
@@ -78,8 +98,8 @@ function AICameraScreen() {
     return null; // This is just a placeholder, navigation happens in tabBarButton
 }
 
-// Bottom Tab Navigator
-function AppTabs() {
+// Bottom Tab Navigator for Customer
+function CustomerTabs() {
     const { View, TouchableOpacity, StyleSheet } = require('react-native');
 
     return (
@@ -193,11 +213,93 @@ function AppTabs() {
     );
 }
 
+// Technician Stack Navigator
+function TechnicianStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="TechnicianHome" component={TechnicianHomeScreen} />
+            <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="Messages" component={MessagesScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Bottom Tab Navigator for Technician
+function TechnicianTabs() {
+    const { View, TouchableOpacity, StyleSheet } = require('react-native');
+
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                headerShown: false,
+                tabBarIcon: ({ focused, color, size }) => {
+                    let iconName;
+
+                    if (route.name === 'TechnicianHomeTab') {
+                        iconName = focused ? 'home' : 'home-outline';
+                    } else if (route.name === 'TechnicianJobsTab') {
+                        iconName = focused ? 'hammer' : 'hammer-outline';
+                    } else if (route.name === 'TechnicianMessagesTab') {
+                        iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                    } else if (route.name === 'TechnicianProfileTab') {
+                        iconName = focused ? 'person' : 'person-outline';
+                    }
+
+                    return <Ionicons name={iconName} size={size} color={color} />;
+                },
+                tabBarActiveTintColor: '#FF6B35',
+                tabBarInactiveTintColor: '#999',
+                tabBarStyle: {
+                    backgroundColor: '#fff',
+                    borderTopWidth: 1,
+                    borderTopColor: '#e0e0e0',
+                    height: 60,
+                    paddingBottom: 8,
+                    paddingTop: 8,
+                },
+                tabBarLabelStyle: {
+                    fontSize: 12,
+                    fontWeight: '500',
+                },
+            })}
+        >
+            <Tab.Screen
+                name="TechnicianHomeTab"
+                component={TechnicianStack}
+                options={{ tabBarLabel: 'Trang Chủ' }}
+            />
+            <Tab.Screen
+                name="TechnicianJobsTab"
+                component={TechnicianStack}
+                options={{ tabBarLabel: 'Công Việc' }}
+            />
+            <Tab.Screen
+                name="TechnicianMessagesTab"
+                component={TechnicianStack}
+                options={{ tabBarLabel: 'Tin Nhắn' }}
+            />
+            <Tab.Screen
+                name="TechnicianProfileTab"
+                component={TechnicianStack}
+                options={{ tabBarLabel: 'Tài Khoản' }}
+            />
+        </Tab.Navigator>
+    );
+}
+
 // Main App Navigator
 export default function AppNavigator() {
+    const auth = useAuth();
+
     return (
         <NavigationContainer>
-            <AppTabs />
+            {!auth.isAuthenticated ? (
+                <AuthNavigator />
+            ) : auth.isCustomer ? (
+                <CustomerTabs />
+            ) : (
+                <TechnicianTabs />
+            )}
         </NavigationContainer>
     );
 }
