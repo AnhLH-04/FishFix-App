@@ -8,8 +8,8 @@ import {
     SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../utils/colors';
-import { useAuth } from '../context/AuthContext';
+import { Colors } from '../../utils/colors';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TechnicianProfileScreen({ navigation }) {
     const { user, logout } = useAuth();

@@ -170,7 +170,7 @@ const InstantBookingConfirmationScreen = ({ route, navigation }) => {
                                 <View style={styles.detailContent}>
                                     <Text style={styles.detailLabel}>Chi phí dự kiến</Text>
                                     <Text style={[styles.detailValue, styles.priceText]}>
-                                        {technician?.price.toLocaleString('vi-VN')} ₫
+                                        {technician?.price ? technician.price.toLocaleString('vi-VN') : '0'} ₫
                                     </Text>
                                 </View>
                             </View>

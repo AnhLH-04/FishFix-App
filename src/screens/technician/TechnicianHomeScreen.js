@@ -9,14 +9,15 @@ import {
     StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../utils/colors';
-import { useAuth } from '../context/AuthContext';
+import { Colors } from '../../utils/colors';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TechnicianHomeScreen({ navigation }) {
     const { user, logout } = useAuth();
     const [activeJobs, setActiveJobs] = useState(2);
     const [completedToday, setCompletedToday] = useState(5);
     const [todayEarnings, setTodayEarnings] = useState(850000);
+    const [isOnline, setIsOnline] = useState(false);
 
     const stats = [
         {
@@ -36,18 +37,43 @@ export default function TechnicianHomeScreen({ navigation }) {
         {
             icon: 'wallet',
             label: 'Thu nhập hôm nay',
-            value: todayEarnings.toLocaleString('vi-VN') + 'đ',
+            value: (todayEarnings ? todayEarnings.toLocaleString('vi-VN') : '0') + 'đ',
             color: '#2196F3',
             bgColor: '#2196F320',
         },
     ];
 
     const quickActions = [
-        { icon: 'search', label: 'Tìm việc', screen: 'AvailableJobs', color: '#FF6B35' },
+        { icon: 'search', label: 'Tìm việc', screen: 'Jobs', color: '#FF6B35' },
         { icon: 'calendar', label: 'Lịch làm việc', screen: 'Schedule', color: '#2196F3' },
-        { icon: 'location', label: 'Việc gần đây', screen: 'NearbyJobs', color: '#4CAF50' },
+        { icon: 'location', label: 'Việc gần đây', screen: 'Jobs', color: '#4CAF50' },
         { icon: 'card', label: 'Thu nhập', screen: 'Earnings', color: '#9C27B0' },
     ];
+
+    const handleToggleOnline = () => {
+        setIsOnline(!isOnline);
+        // Trong thực tế, gửi trạng thái lên server
+        if (!isOnline) {
+            // Simulate receiving request after going online
+            setTimeout(() => {
+                navigation.navigate('IncomingRequest', {
+                    request: {
+                        id: 1,
+                        customer: 'Nguyễn Văn A',
+                        service: 'Sửa máy lạnh',
+                        address: '123 Nguyễn Văn Linh, Quận 7, TP.HCM',
+                        distance: '2.5 km',
+                        estimatedTime: '10 phút',
+                        price: 500000,
+                        description: 'Máy lạnh không lạnh, có tiếng kêu lạ',
+                        urgent: true,
+                        phone: '0123456789',
+                        rating: 4.8,
+                    },
+                });
+            }, 3000);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -76,6 +102,51 @@ export default function TechnicianHomeScreen({ navigation }) {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Online/Offline Toggle - Giống Grab */}
+                <View style={styles.onlineToggleContainer}>
+                    <View style={styles.toggleContent}>
+                        <View style={styles.toggleLeft}>
+                            <View
+                                style={[
+                                    styles.statusDot,
+                                    { backgroundColor: isOnline ? '#4CAF50' : '#999' },
+                                ]}
+                            />
+                            <View>
+                                <Text style={styles.toggleTitle}>
+                                    {isOnline ? 'Bạn đang online' : 'Bạn đang offline'}
+                                </Text>
+                                <Text style={styles.toggleDescription}>
+                                    {isOnline
+                                        ? 'Sẵn sàng nhận yêu cầu mới'
+                                        : 'Bật để nhận yêu cầu từ khách hàng'}
+                                </Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleSwitch,
+                                { backgroundColor: isOnline ? '#4CAF50' : '#CCC' },
+                            ]}
+                            onPress={handleToggleOnline}
+                        >
+                            <View
+                                style={[
+                                    styles.toggleCircle,
+                                    { transform: [{ translateX: isOnline ? 22 : 0 }] },
+                                ]}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {isOnline && (
+                        <View style={styles.onlineInfo}>
+                            <Ionicons name="information-circle" size={16} color="#2196F3" />
+                            <Text style={styles.onlineInfoText}>
+                                Yêu cầu mới sẽ hiển thị trong vòng 30 giây
+                            </Text>
+                        </View>
+                    )}
+                </View>
                 {/* Stats */}
                 <View style={styles.statsContainer}>
                     {stats.map((stat, index) => (
@@ -100,7 +171,7 @@ export default function TechnicianHomeScreen({ navigation }) {
                                 style={styles.actionCard}
                                 onPress={() => {
                                     if (action.screen) {
-                                        // navigation.navigate(action.screen);
+                                        navigation.navigate(action.screen);
                                     }
                                 }}
                             >
@@ -411,5 +482,76 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#FF3B30',
         fontWeight: '600',
+    },
+    // Online Toggle Styles
+    onlineToggleContainer: {
+        backgroundColor: 'white',
+        margin: 15,
+        marginBottom: 10,
+        padding: 20,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 5,
+    },
+    toggleContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    toggleLeft: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    statusDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    toggleTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    toggleDescription: {
+        fontSize: 12,
+        color: '#666',
+    },
+    toggleSwitch: {
+        width: 50,
+        height: 28,
+        borderRadius: 14,
+        padding: 3,
+        justifyContent: 'center',
+    },
+    toggleCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    onlineInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 15,
+        paddingTop: 15,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
+    },
+    onlineInfoText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#2196F3',
     },
 });

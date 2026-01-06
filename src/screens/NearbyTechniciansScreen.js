@@ -204,7 +204,7 @@ const NearbyTechniciansScreen = ({ route, navigation }) => {
                             <View style={styles.priceContainer}>
                                 <Text style={styles.priceLabel}>Giá khởi điểm:</Text>
                                 <Text style={styles.price}>
-                                    {tech.price.toLocaleString('vi-VN')} ₫
+                                    {tech.price ? tech.price.toLocaleString('vi-VN') : '0'} ₫
                                 </Text>
                             </View>
 

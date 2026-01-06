@@ -26,8 +26,16 @@ import InstantBookingScreen from '../screens/InstantBookingScreen';
 import InstantBookingConfirmationScreen from '../screens/InstantBookingConfirmationScreen';
 
 // Technician Screens
-import TechnicianHomeScreen from '../screens/TechnicianHomeScreen';
-import TechnicianProfileScreen from '../screens/TechnicianProfileScreen';
+import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
+import TechnicianProfileScreen from '../screens/technician/TechnicianProfileScreen';
+import JobsScreen from '../screens/technician/JobsScreen';
+import JobDetailScreen from '../screens/technician/JobDetailScreen';
+import EarningsScreen from '../screens/technician/EarningsScreen';
+import ScheduleScreen from '../screens/technician/ScheduleScreen';
+import IncomingRequestScreen from '../screens/technician/IncomingRequestScreen';
+import ActiveJobScreen from '../screens/technician/ActiveJobScreen';
+import JobCompletionScreen from '../screens/technician/JobCompletionScreen';
+import ReviewsScreen from '../screens/technician/ReviewsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -219,7 +227,15 @@ function TechnicianStack() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="TechnicianHome" component={TechnicianHomeScreen} />
             <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="Jobs" component={JobsScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            <Stack.Screen name="Earnings" component={EarningsScreen} />
+            <Stack.Screen name="Schedule" component={ScheduleScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
+            <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} />
+            <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
+            <Stack.Screen name="JobCompletion" component={JobCompletionScreen} />
+            <Stack.Screen name="Reviews" component={ReviewsScreen} />
         </Stack.Navigator>
     );
 }
