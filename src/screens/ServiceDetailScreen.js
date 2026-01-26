@@ -289,15 +289,20 @@ const ServiceDetailScreen = ({ route, navigation }) => {
 
                     {/* Help Section */}
                     <View style={styles.helpCard}>
-                        <Ionicons name="help-circle" size={24} color="#2196F3" />
+                        <TouchableOpacity
+                        style={{flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between'}}
+                        onPress={() => navigation.navigate('AIDiagnosis')}
+                        >
+                        <Ionicons name="bulb" size={24} color="#eedc4dff" />
                         <View style={styles.helpContent}>
-                            <Text style={styles.helpTitle}>Không tìm thấy dịch vụ?</Text>
+                            <Text style={styles.helpTitle}>Không tìm thấy dịch vụ bạn cần?</Text>
                             <Text style={styles.helpText}>
-                                Hãy liên hệ với chúng tôi để được tư vấn
+                                Hãy mô tả sự cố của bạn, AI sẽ giúp tìm thợ phù hợp
                             </Text>
                         </View>
                         <TouchableOpacity style={styles.contactButton}>
                             <Ionicons name="call" size={18} color="#fff" />
+                        </TouchableOpacity>
                         </TouchableOpacity>
                     </View>
                 </View>

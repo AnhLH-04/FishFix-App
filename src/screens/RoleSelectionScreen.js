@@ -1,97 +1,216 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
-    Image,
     Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils/colors';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function RoleSelectionScreen({ navigation }) {
-    const handleRoleSelect = (role) => {
-        navigation.navigate('Login', { role });
+    const [selectedRole, setSelectedRole] = useState(null);
+
+    const handleContinue = () => {
+        if (selectedRole) {
+            navigation.navigate('Login', { role: selectedRole });
+        }
     };
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Chào mừng đến với</Text>
-                <Text style={styles.subtitle}>Smart Home Services</Text>
-                <Text style={styles.description}>
-                    Chọn loại tài khoản để tiếp tục
-                </Text>
+                <Text style={styles.welcomeText}>Chào mừng bạn đến với</Text>
+                <Text style={styles.appName}>FishFix</Text>
+                <Text style={styles.subtitle}>Bạn là Khách hàng hay Thợ sửa chữa?</Text>
             </View>
 
+            {/* Role Cards */}
             <View style={styles.rolesContainer}>
                 {/* Customer Card */}
                 <TouchableOpacity
-                    style={[styles.roleCard, styles.customerCard]}
-                    onPress={() => handleRoleSelect('customer')}
-                    activeOpacity={0.8}
+                    style={[
+                        styles.roleCard,
+                        selectedRole === 'customer' && styles.customerSelected
+                    ]}
+                    onPress={() => setSelectedRole('customer')}
+                    activeOpacity={0.95}
                 >
-                    <View style={styles.iconContainer}>
-                        <Ionicons name="person" size={60} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.roleTitle}>Khách hàng</Text>
-                    <Text style={styles.roleDescription}>
-                        Đặt lịch sửa chữa và bảo trì thiết bị điện gia dụng
-                    </Text>
-                    <View style={styles.features}>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                            <Text style={styles.featureText}>Đặt lịch nhanh chóng</Text>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconBadge}>
+                            <Ionicons 
+                                name="person" 
+                                size={50} 
+                                color={selectedRole === 'customer' ? '#fff' : '#667eea'} 
+                            />
                         </View>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                            <Text style={styles.featureText}>Chẩn đoán AI</Text>
+                        <Text style={[
+                            styles.roleTitle,
+                            selectedRole === 'customer' && styles.roleTitleSelected
+                        ]}>
+                            Khách Hàng
+                        </Text>
+                        <Text style={[
+                            styles.roleDescription,
+                            selectedRole === 'customer' && styles.roleDescriptionSelected
+                        ]}>
+                            Đặt lịch sửa chữa nhanh chóng và tiện lợi
+                        </Text>
+                        
+                        <View style={styles.featuresContainer}>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="calendar" 
+                                    size={18} 
+                                    color={selectedRole === 'customer' ? '#fff' : '#667eea'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'customer' && styles.featureTextSelected
+                                ]}>
+                                    Đặt lịch dễ dàng
+                                </Text>
+                            </View>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="shield-checkmark" 
+                                    size={18} 
+                                    color={selectedRole === 'customer' ? '#fff' : '#667eea'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'customer' && styles.featureTextSelected
+                                ]}>
+                                    Bảo hành chất lượng
+                                </Text>
+                            </View>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="sparkles" 
+                                    size={18} 
+                                    color={selectedRole === 'customer' ? '#fff' : '#667eea'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'customer' && styles.featureTextSelected
+                                ]}>
+                                    AI chẩn đoán thông minh
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                            <Text style={styles.featureText}>Theo dõi đơn hàng</Text>
-                        </View>
-                    </View>
-                    <View style={styles.arrowContainer}>
-                        <Ionicons name="arrow-forward" size={24} color={Colors.primary} />
+
+                        {selectedRole === 'customer' && (
+                            <View style={styles.selectedBadge}>
+                                <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                            </View>
+                        )}
                     </View>
                 </TouchableOpacity>
 
                 {/* Technician Card */}
                 <TouchableOpacity
-                    style={[styles.roleCard, styles.technicianCard]}
-                    onPress={() => handleRoleSelect('technician')}
-                    activeOpacity={0.8}
+                    style={[
+                        styles.roleCard,
+                        selectedRole === 'technician' && styles.technicianSelected
+                    ]}
+                    onPress={() => setSelectedRole('technician')}
+                    activeOpacity={0.95}
                 >
-                    <View style={styles.iconContainer}>
-                        <Ionicons name="construct" size={60} color="#FF6B35" />
-                    </View>
-                    <Text style={styles.roleTitle}>Thợ sửa chữa</Text>
-                    <Text style={styles.roleDescription}>
-                        Nhận công việc và quản lý lịch làm việc
-                    </Text>
-                    <View style={styles.features}>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color="#FF6B35" />
-                            <Text style={styles.featureText}>Nhận việc linh hoạt</Text>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconBadge}>
+                            <Ionicons 
+                                name="construct" 
+                                size={50} 
+                                color={selectedRole === 'technician' ? '#fff' : '#fa709a'} 
+                            />
                         </View>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color="#FF6B35" />
-                            <Text style={styles.featureText}>Quản lý lịch trình</Text>
+                        <Text style={[
+                            styles.roleTitle,
+                            selectedRole === 'technician' && styles.roleTitleSelected
+                        ]}>
+                            Thợ Sửa Chữa
+                        </Text>
+                        <Text style={[
+                            styles.roleDescription,
+                            selectedRole === 'technician' && styles.roleDescriptionSelected
+                        ]}>
+                            Nhận việc linh hoạt, thu nhập cao
+                        </Text>
+                        
+                        <View style={styles.featuresContainer}>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="time" 
+                                    size={18} 
+                                    color={selectedRole === 'technician' ? '#fff' : '#fa709a'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'technician' && styles.featureTextSelected
+                                ]}>
+                                    Lịch làm việc linh hoạt
+                                </Text>
+                            </View>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="cash" 
+                                    size={18} 
+                                    color={selectedRole === 'technician' ? '#fff' : '#fa709a'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'technician' && styles.featureTextSelected
+                                ]}>
+                                    Thu nhập ổn định
+                                </Text>
+                            </View>
+                            <View style={styles.featureRow}>
+                                <Ionicons 
+                                    name="trending-up" 
+                                    size={18} 
+                                    color={selectedRole === 'technician' ? '#fff' : '#fa709a'} 
+                                />
+                                <Text style={[
+                                    styles.featureText,
+                                    selectedRole === 'technician' && styles.featureTextSelected
+                                ]}>
+                                    Phát triển sự nghiệp
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.featureItem}>
-                            <Ionicons name="checkmark-circle" size={20} color="#FF6B35" />
-                            <Text style={styles.featureText}>Thu nhập ổn định</Text>
-                        </View>
-                    </View>
-                    <View style={styles.arrowContainer}>
-                        <Ionicons name="arrow-forward" size={24} color="#FF6B35" />
+
+                        {selectedRole === 'technician' && (
+                            <View style={styles.selectedBadge}>
+                                <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                            </View>
+                        )}
                     </View>
                 </TouchableOpacity>
             </View>
+
+            {/* Continue Button */}
+            <TouchableOpacity
+                style={[
+                    styles.continueButton,
+                    !selectedRole && styles.continueButtonDisabled,
+                    selectedRole === 'customer' && styles.continueButtonCustomer,
+                    selectedRole === 'technician' && styles.continueButtonTechnician,
+                ]}
+                onPress={handleContinue}
+                disabled={!selectedRole}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.continueButtonText}>
+                    {selectedRole ? 'Tiếp Tục' : 'Chọn vai trò để tiếp tục'}
+                </Text>
+                {selectedRole && (
+                    <Ionicons name="arrow-forward" size={22} color="#fff" />
+                )}
+            </TouchableOpacity>
         </View>
     );
 }
@@ -99,38 +218,40 @@ export default function RoleSelectionScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F9FA',
-        padding: 20,
+        backgroundColor: '#FFFFFF',
     },
     header: {
-        marginTop: 60,
-        marginBottom: 40,
+        paddingTop: 60,
+        paddingHorizontal: 30,
+        paddingBottom: 30,
         alignItems: 'center',
     },
-    title: {
-        fontSize: 24,
+    welcomeText: {
+        fontSize: 16,
         color: '#666',
-        marginBottom: 5,
+        marginBottom: 8,
     },
-    subtitle: {
+    appName: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: Colors.primary,
-        marginBottom: 10,
+        color: '#333',
+        marginBottom: 12,
     },
-    description: {
-        fontSize: 16,
-        color: '#999',
+    subtitle: {
+        fontSize: 15,
+        color: '#888',
+        textAlign: 'center',
     },
     rolesContainer: {
         flex: 1,
+        paddingHorizontal: 20,
         justifyContent: 'center',
         gap: 20,
     },
     roleCard: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 25,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 24,
+        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -139,47 +260,100 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: 'transparent',
     },
-    customerCard: {
+    customerSelected: {
+        backgroundColor: Colors.primary,
         borderColor: Colors.primary,
     },
-    technicianCard: {
+    technicianSelected: {
+        backgroundColor: '#FF6B35',
         borderColor: '#FF6B35',
     },
-    iconContainer: {
+    cardContent: {
+        padding: 24,
+        minHeight: 220,
+    },
+    iconBadge: {
+        width: 80,
+        height: 80,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
         alignItems: 'center',
-        marginBottom: 15,
+        justifyContent: 'center',
+        marginBottom: 16,
     },
     roleTitle: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 'bold',
         color: '#333',
-        textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: 8,
+    },
+    roleTitleSelected: {
+        color: '#fff',
     },
     roleDescription: {
         fontSize: 14,
         color: '#666',
-        textAlign: 'center',
         marginBottom: 20,
     },
-    features: {
-        marginBottom: 15,
+    roleDescriptionSelected: {
+        color: 'rgba(255, 255, 255, 0.9)',
     },
-    featureItem: {
+    featuresContainer: {
+        gap: 10,
+    },
+    featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10,
+        gap: 10,
     },
     featureText: {
-        marginLeft: 10,
         fontSize: 14,
         color: '#555',
+        flex: 1,
     },
-    arrowContainer: {
+    featureTextSelected: {
+        color: '#fff',
+    },
+    selectedBadge: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+    },
+    continueButton: {
+        marginHorizontal: 20,
+        marginBottom: 40,
+        borderRadius: 30,
+        backgroundColor: '#E0E0E0',
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
+        justifyContent: 'center',
+        paddingVertical: 18,
+        paddingHorizontal: 24,
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    continueButtonDisabled: {
+        backgroundColor: '#E0E0E0',
+    },
+    continueButtonCustomer: {
+        backgroundColor: Colors.primary,
+    },
+    continueButtonTechnician: {
+        backgroundColor: '#FF6B35',
+    },
+    continueButtonText: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#fff',
     },
 });

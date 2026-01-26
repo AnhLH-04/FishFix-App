@@ -13,12 +13,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils/colors';
 import { useAuth } from '../context/AuthContext';
+import authService from '../services/authService';
 
 export default function LoginScreen({ route, navigation }) {
     const { role } = route.params || { role: 'customer' };
     const { login } = useAuth();
 
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState(''); // Số điện thoại hoặc email
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -41,25 +42,46 @@ export default function LoginScreen({ route, navigation }) {
     const config = roleConfig[role];
 
     const handleLogin = async () => {
-        if (!email || !password) {
+        if (!identifier || !password) {
             Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
             return;
         }
 
         setLoading(true);
 
-        // Giả lập API call - bạn sẽ thay thế bằng API thực tế
-        setTimeout(() => {
-            const userData = {
-                id: Math.random().toString(),
-                email: email,
-                name: role === 'customer' ? 'Nguyễn Văn A' : 'Thợ Nguyễn',
-                phone: '0123456789',
-            };
-
-            login(userData, role);
+        try {
+            // Bước 1: Gọi API đăng nhập để lấy token
+            const loginResponse = await authService.login(identifier, password);
+            
+            if (loginResponse && loginResponse.accessToken) {
+                // Bước 2: Lấy thông tin user bằng token
+                const userInfo = await authService.getCurrentUser();
+                
+                if (userInfo) {
+                    // Map roleId sang role string
+                    // roleId: 1 = customer, 2 = worker
+                    const userRole = userInfo.roleId === 2 ? 'technician' : 'customer';
+                    
+                    // Lưu thông tin user và role vào context
+                    const userData = {
+                        id: userInfo.userId,
+                        email: userInfo.email,
+                        fullName: userInfo.fullName,
+                        phone: userInfo.phone,
+                        roleId: userInfo.roleId,
+                    };
+                    
+                    login(userData, userRole);
+                    // Không cần Alert ở đây, navigation sẽ tự động chuyển
+                }
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            const errorMessage = error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+            Alert.alert('Lỗi', errorMessage);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     return (
@@ -88,10 +110,9 @@ export default function LoginScreen({ route, navigation }) {
                         <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
-                            placeholder="Email"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
+                            placeholder="Email hoặc Số điện thoại"
+                            value={identifier}
+                            onChangeText={setIdentifier}
                             autoCapitalize="none"
                         />
                     </View>
@@ -114,7 +135,10 @@ export default function LoginScreen({ route, navigation }) {
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={styles.forgotPassword}>
+                    <TouchableOpacity 
+                        style={styles.forgotPassword}
+                        onPress={() => navigation.navigate('ForgotPassword')}
+                    >
                         <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
                     </TouchableOpacity>
 
@@ -146,7 +170,7 @@ export default function LoginScreen({ route, navigation }) {
 
                     <View style={styles.signupContainer}>
                         <Text style={styles.signupText}>Chưa có tài khoản? </Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Register', { role })}>
                             <Text style={[styles.signupLink, { color: config.color }]}>
                                 Đăng ký ngay
                             </Text>

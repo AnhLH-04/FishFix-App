@@ -1,8 +1,8 @@
 # Hướng Dẫn Deploy & Configuration
 
 ## 🚀 Deploy Production
-
-### Option 1: Expo Build Service (EAS)
+EAS
+### Option 1: Expo Build Service ()
 
 #### Bước 1: Cài đặt EAS CLI
 ```bash

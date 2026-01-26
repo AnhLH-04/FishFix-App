@@ -38,7 +38,7 @@ export default function TechnicianProfileScreen({ navigation }) {
                     <View style={styles.avatarContainer}>
                         <Ionicons name="person-circle" size={80} color="#FF6B35" />
                     </View>
-                    <Text style={styles.userName}>{user?.name}</Text>
+                    <Text style={styles.userName}>{user?.fullName}</Text>
                     <Text style={styles.userEmail}>{user?.email}</Text>
                     <View style={styles.ratingContainer}>
                         <Ionicons name="star" size={16} color="#FFB800" />

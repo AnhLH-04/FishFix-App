@@ -96,7 +96,7 @@ const AIDiagnosisScreen = ({ navigation }) => {
     };
 
     return (
-        <ScrollView style={styles.container}>
+        <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -109,7 +109,7 @@ const AIDiagnosisScreen = ({ navigation }) => {
                 <View style={{ width: 40 }} />
             </View>
 
-            {/* Info Card */}
+            {/* Info Card - Fixed at top */}
             <View style={styles.infoCard}>
                 <Ionicons name="information-circle" size={24} color="#1E88E5" />
                 <Text style={styles.infoText}>
@@ -117,6 +117,7 @@ const AIDiagnosisScreen = ({ navigation }) => {
                 </Text>
             </View>
 
+            <ScrollView style={styles.scrollContent}>
             {/* Image Selection */}
             <View style={styles.imageSection}>
                 {selectedImage ? (
@@ -248,6 +249,7 @@ const AIDiagnosisScreen = ({ navigation }) => {
                 </View>
             )}
         </ScrollView>
+        </View>
     );
 };
 
@@ -255,6 +257,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f8f9fa',
+    },
+    scrollContent: {
+        flex: 1,
     },
     header: {
         flexDirection: 'row',

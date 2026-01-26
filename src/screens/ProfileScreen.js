@@ -8,6 +8,7 @@ import {
     Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
 const ProfileScreen = ({ navigation }) => {
     const menuItems = [
@@ -60,6 +61,8 @@ const ProfileScreen = ({ navigation }) => {
             color: '#607D8B',
         },
     ];
+
+    const { logout } = useAuth();
 
     return (
         <View style={styles.container}>
@@ -141,7 +144,9 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
                 {/* Logout Button */}
-                <TouchableOpacity style={styles.logoutButton}>
+                <TouchableOpacity style={styles.logoutButton}
+                    onPress={logout}
+                    >
                     <Ionicons name="log-out-outline" size={20} color="#F44336" />
                     <Text style={styles.logoutText}>Đăng xuất</Text>
                 </TouchableOpacity>

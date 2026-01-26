@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 // Auth Screens
 import RoleSelectionScreen from '../screens/RoleSelectionScreen';
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 // Customer Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -47,6 +50,8 @@ function AuthNavigator() {
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
             <AuthStack.Screen name="RoleSelection" component={RoleSelectionScreen} />
             <AuthStack.Screen name="Login" component={LoginScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+            <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         </AuthStack.Navigator>
     );
 }
@@ -183,6 +188,8 @@ function CustomerTabs() {
                             }}
                         >
                             <View style={{
+                                paddingLeft: 5,
+                                paddingTop: 5,
                                 width: 70,
                                 height: 70,
                                 borderRadius: 35,
@@ -200,7 +207,7 @@ function CustomerTabs() {
                                 borderWidth: 4,
                                 borderColor: '#fff',
                             }}>
-                                <Ionicons name="camera" size={32} color="#fff" />
+                                <Ionicons name="sparkles" size={32} color="#fff" />
                             </View>
                         </TouchableOpacity>
                     ),
@@ -306,6 +313,25 @@ function TechnicianTabs() {
 // Main App Navigator
 export default function AppNavigator() {
     const auth = useAuth();
+
+    // Hiển thị loading screen khi đang check auth
+    if (auth.loading) {
+        return (
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="Loading">
+                        {() => (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}>
+                                <Ionicons name="construct" size={60} color="#667eea" />
+                                <Text style={{ marginTop: 20, fontSize: 18, fontWeight: 'bold', color: '#333' }}>Fish Fix Services</Text>
+                                <Text style={{ marginTop: 10, fontSize: 14, color: '#666' }}>Đang tải...</Text>
+                            </View>
+                        )}
+                    </Stack.Screen>
+                </Stack.Navigator>
+            </NavigationContainer>
+        );
+    }
 
     return (
         <NavigationContainer>

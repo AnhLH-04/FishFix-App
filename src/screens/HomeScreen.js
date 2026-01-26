@@ -9,6 +9,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -143,6 +144,37 @@ const HomeScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         ))}
                     </View>
+                </View>
+
+                {/* AI Diagnosis Card */}
+                <View style={styles.section}>
+                    <TouchableOpacity 
+                        style={styles.aiCard}
+                        onPress={() => navigation.navigate('AIDiagnosis')}
+                        activeOpacity={0.9}
+                    >
+                        <LinearGradient
+                            colors={['#4A90E2', '#50C9C3']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.aiGradient}
+                        >
+                            <View style={styles.aiIconContainer}>
+                                <Ionicons name="sparkles" size={32} color="#FFD700" />
+                                <View style={styles.aiBadge}>
+                                    <Text style={styles.aiBadgeText}>MỚI</Text>
+                                </View>
+                            </View>
+                            <Text style={styles.aiTitle}>AI Chẩn đoán thông minh</Text>
+                            <Text style={styles.aiDescription}>
+                                Chụp ảnh sự cố - AI sẽ tự động phân tích và gợi ý thợ phù hợp
+                            </Text>
+                            <View style={styles.aiButton}>
+                                <Text style={styles.aiButtonText}>Thử ngay</Text>
+                                <Ionicons name="arrow-forward" size={18} color="#2196F3" />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Quick Actions */}
@@ -449,6 +481,71 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#666',
         textAlign: 'center',
+    },
+    aiCard: {
+        marginHorizontal: 20,
+        borderRadius: 20,
+        overflow: 'hidden',
+        elevation: 5,
+        shadowColor: '#4A90E2',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    aiGradient: {
+        padding: 24,
+        borderRadius: 20,
+    },
+    aiIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    aiBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#FFD700',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    aiBadgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    aiTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#fff',
+        marginBottom: 12,
+    },
+    aiDescription: {
+        fontSize: 14,
+        color: '#E3F2FD',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    aiButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 25,
+        gap: 8,
+    },
+    aiButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#2196F3',
     },
 });
 

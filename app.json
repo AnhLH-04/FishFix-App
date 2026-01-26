@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "DemoMMA301",
-    "slug": "DemoMMA301",
+    "name": "FishFix",
+    "slug": "fishfix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anhlh04.DemoMMA301"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,6 +29,11 @@
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "18ffed2a-fe28-403b-bc1c-0dd6ac1c939b"
+      }
+    }
   }
 }
