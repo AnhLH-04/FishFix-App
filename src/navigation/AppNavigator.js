@@ -293,7 +293,7 @@ function TechnicianTabs() {
             />
             <Tab.Screen
                 name="TechnicianJobsTab"
-                component={TechnicianStack}
+                component={JobsScreen}
                 options={{ tabBarLabel: 'Công Việc' }}
             />
             <Tab.Screen
@@ -303,7 +303,7 @@ function TechnicianTabs() {
             />
             <Tab.Screen
                 name="TechnicianProfileTab"
-                component={TechnicianStack}
+                component={TechnicianProfileScreen}
                 options={{ tabBarLabel: 'Tài Khoản' }}
             />
         </Tab.Navigator>
