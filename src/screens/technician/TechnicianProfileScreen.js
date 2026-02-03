@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,18 +9,114 @@ import {
     Image,
     Dimensions,
     Modal,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
+import workerService from '../../services/workerService';
 
 const { width } = Dimensions.get('window');
 
 export default function TechnicianProfileScreen({ navigation }) {
-    const { user, logout } = useAuth();
+    const { user, logout, login, userRole } = useAuth();
     const [selectedTab, setSelectedTab] = useState('overview'); // overview, portfolio, services, reviews
     const [selectedCert, setSelectedCert] = useState(null);
     const [certModalVisible, setCertModalVisible] = useState(false);
+    const [checkingWorker, setCheckingWorker] = useState(true);
+    const [workerProfile, setWorkerProfile] = useState(null);
+    const [certifications, setCertifications] = useState([]);
+    const [loadingCerts, setLoadingCerts] = useState(false);
+
+    // Danh sách categories để map từ categoryId sang tên
+    const skillCategories = {
+        1: { name: 'Máy lạnh', icon: 'snow' },
+        2: { name: 'Tủ lạnh', icon: 'cube' },
+        3: { name: 'Máy giặt', icon: 'water' },
+        4: { name: 'Điện dân dụng', icon: 'flash' },
+        5: { name: 'Điện tử', icon: 'hardware-chip' },
+        6: { name: 'Sửa ống nước', icon: 'water-outline' },
+        7: { name: 'Thợ mộc', icon: 'hammer' },
+        8: { name: 'Sơn tường', icon: 'color-palette' },
+        9: { name: 'Hàn xì', icon: 'flame' },
+        10: { name: 'Lắp đặt điện', icon: 'bulb' },
+    };
+
+    // Check worker profile on mount
+    useEffect(() => {
+        checkWorkerProfile();
+    }, []);
+
+    const checkWorkerProfile = async () => {
+        if (!user?.id) return;
+        
+        setCheckingWorker(true);
+        try {
+            const profile = await workerService.getWorkerByUserId(user.id);
+            
+            if (profile && profile.workerId) {
+                setWorkerProfile(profile);
+                
+                // Có worker profile rồi, lưu workerId vào context
+                if (!user.workerId || user.workerId !== profile.workerId) {
+                    const updatedUser = {
+                        ...user,
+                        workerId: profile.workerId,
+                    };
+                    login(updatedUser, userRole);
+                }
+                
+                // Load certifications
+                loadCertifications(profile.workerId);
+            }
+        } catch (error) {
+            console.error('Check worker profile error:', error);
+        } finally {
+            setCheckingWorker(false);
+        }
+    };
+
+    const loadCertifications = async (workerId) => {
+        if (!workerId) return;
+        
+        setLoadingCerts(true);
+        try {
+            const certs = await workerService.getWorkerCertifications(workerId);
+            setCertifications(certs || []);
+        } catch (error) {
+            console.error('Load certifications error:', error);
+            setCertifications([]);
+        } finally {
+            setLoadingCerts(false);
+        }
+    };
+
+    // Convert skills từ API sang format hiển thị
+    const getSkillsDisplay = () => {
+        if (!workerProfile?.skills) return [];
+        
+        return workerProfile.skills.map(skill => {
+            const category = skillCategories[skill.categoryId];
+            const level = skill.yearsOfExperience >= 7 ? 'Chuyên gia' : 
+                         skill.yearsOfExperience >= 4 ? 'Thành thạo' : 'Trung bình';
+            
+            return {
+                name: category?.name || 'Khác',
+                icon: category?.icon || 'construct',
+                level: level,
+                years: skill.yearsOfExperience,
+                isPrimary: skill.isPrimarySkill,
+            };
+        });
+    };
+
+    // Format response time
+    const getResponseTimeText = (minutes) => {
+        if (!minutes || minutes === 0) return '< 15 phút';
+        if (minutes < 60) return `< ${minutes} phút`;
+        const hours = Math.floor(minutes / 60);
+        return `< ${hours} giờ`;
+    };
 
     // Mock data cho demo
     const technicianData = {
@@ -58,108 +154,135 @@ export default function TechnicianProfileScreen({ navigation }) {
         { id: 4, type: 'Sửa máy giặt', description: 'Thay motor máy giặt LG', before: '🌀', after: '✅' },
     ];
 
-    const certifications = [
-        { 
-            name: 'Chứng chỉ Điện lạnh Quốc tế', 
-            org: 'HVAC Association', 
-            year: '2018',
-            imageUrl: 'https://bizweb.dktcdn.net/thumb/1024x1024/100/408/204/products/karofi-giay-chung-nhan-dai-ly-e3a6f40a-ead9-402c-9cc8-e78259466111-2a1271fe-1271-4f4d-b6e4-ff7d357a70af.jpg?v=1652241168487' // Thay bằng link ảnh thực tế
-        },
-        { 
-            name: 'Thợ điện chuyên nghiệp', 
-            org: 'Bộ Công Thương', 
-            year: '2019',
-            imageUrl: 'https://nhietlanhsaigon.vn/files/images/giaycn/img_1569947705452_o_1dm42po35bcl14hkgg5juere9d.jpg' // Thay bằng link ảnh thực tế
-        },
-        { 
-            name: 'An toàn điện', 
-            org: 'Viện Năng lượng VN', 
-            year: '2020',
-            imageUrl: 'https://bkigroup.vn/wp-content/uploads/2023/09/The-an-toan-dien-BKI-2.png' // Để trống nếu chưa có ảnh
-        },
-    ];
-
     const profileItems = [
         { icon: 'person-outline', label: 'Chỉnh sửa hồ sơ', screen: 'EditProfile' },
+        { icon: 'ribbon-outline', label: 'Quản lý Chứng chỉ', screen: 'ManageCertifications' },
+        { icon: 'construct-outline', label: 'Quản lý Kỹ năng', screen: 'ManageSkills' },
         { icon: 'card-outline', label: 'Phương thức thanh toán', screen: 'PaymentMethods' },
         { icon: 'stats-chart-outline', label: 'Thống kê chi tiết', screen: 'Statistics' },
         { icon: 'settings-outline', label: 'Cài đặt', screen: 'Settings' },
     ];
 
-    const renderOverview = () => (
-        <View>
-            {/* Bio */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Giới thiệu</Text>
-                <Text style={styles.bioText}>{technicianData.bio}</Text>
-            </View>
+    const renderOverview = () => {
+        const skills = getSkillsDisplay();
+        const primarySkill = skills.find(s => s.isPrimary);
+        
+        return (
+            <View>
+                {/* Bio */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Giới thiệu</Text>
+                    <Text style={styles.bioText}>
+                        {workerProfile?.bio || 'Chưa có giới thiệu'}
+                    </Text>
+                </View>
 
-            {/* Stats Grid */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Thống kê nổi bật</Text>
-                <View style={styles.statsGrid}>
-                    <View style={styles.statCard}>
-                        <Ionicons name="briefcase" size={24} color="#FF6B35" />
-                        <Text style={styles.statValue}>{technicianData.totalJobs}</Text>
-                        <Text style={styles.statLabel}>Công việc</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Ionicons name="time" size={24} color="#2196F3" />
-                        <Text style={styles.statValue}>{technicianData.responseTime}</Text>
-                        <Text style={styles.statLabel}>Phản hồi</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                        <Ionicons name="checkmark-done" size={24} color="#4CAF50" />
-                        <Text style={styles.statValue}>{technicianData.completionRate}%</Text>
-                        <Text style={styles.statLabel}>Hoàn thành</Text>
+                {/* Stats Grid */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Thống kê nổi bật</Text>
+                    <View style={styles.statsGrid}>
+                        <View style={styles.statCard}>
+                            <Ionicons name="briefcase" size={24} color="#FF6B35" />
+                            <Text style={styles.statValue}>{workerProfile?.completedJobs || 100}</Text>
+                            <Text style={styles.statLabel}>Công việc</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Ionicons name="time" size={24} color="#2196F3" />
+                            <Text style={styles.statValue}>
+                                {getResponseTimeText(workerProfile?.responseTimeMinutes)}
+                            </Text>
+                            <Text style={styles.statLabel}>Phản hồi</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Ionicons name="location" size={24} color="#4CAF50" />
+                            <Text style={styles.statValue}>{workerProfile?.workingRadiusKm || 0} km</Text>
+                            <Text style={styles.statLabel}>Bán kính</Text>
+                        </View>
                     </View>
                 </View>
-            </View>
 
-            {/* Skills */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Kỹ năng chuyên môn</Text>
-                {skills.map((skill, index) => (
-                    <View key={index} style={styles.skillCard}>
-                        <View style={styles.skillIcon}>
-                            <Ionicons name={skill.icon} size={24} color="#FF6B35" />
-                        </View>
-                        <View style={styles.skillInfo}>
-                            <View style={styles.skillHeader}>
-                                <Text style={styles.skillName}>{skill.name}</Text>
-                                <View style={styles.levelBadge}>
-                                    <Text style={styles.levelText}>{skill.level}</Text>
+                {/* Skills */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Kỹ năng chuyên môn</Text>
+                    {skills.length > 0 ? (
+                        skills.map((skill, index) => (
+                            <View key={index} style={styles.skillCard}>
+                                <View style={styles.skillIcon}>
+                                    <Ionicons name={skill.icon} size={24} color="#FF6B35" />
+                                </View>
+                                <View style={styles.skillInfo}>
+                                    <View style={styles.skillHeader}>
+                                        <Text style={styles.skillName}>{skill.name}</Text>
+                                        <View style={styles.levelBadge}>
+                                            <Text style={styles.levelText}>{skill.level}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.skillYears}>{skill.years} năm kinh nghiệm</Text>
                                 </View>
                             </View>
-                            <Text style={styles.skillYears}>{skill.years} năm kinh nghiệm</Text>
-                        </View>
-                    </View>
-                ))}
-            </View>
+                        ))
+                    ) : (
+                        <Text style={styles.emptyText}>Chưa có kỹ năng nào</Text>
+                    )}
+                </View>
 
-            {/* Certifications */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Chứng chỉ & Bằng cấp</Text>
-                {certifications.map((cert, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={styles.certCard}
-                        onPress={() => {
-                            setSelectedCert(cert);
-                            setCertModalVisible(true);
-                        }}
-                    >
-                        <Ionicons name="ribbon" size={20} color="#FFB800" />
-                        <View style={styles.certInfo}>
-                            <Text style={styles.certName}>{cert.name}</Text>
-                            <Text style={styles.certOrg}>{cert.org} • {cert.year}</Text>
-                        </View>
-                        <Ionicons name="eye-outline" size={20} color="#2196F3" />
-                    </TouchableOpacity>
-                ))}
+                {/* Certifications */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Chứng chỉ & Bằng cấp</Text>
+                    {loadingCerts ? (
+                        <Text style={styles.emptyText}>Đang tải...</Text>
+                    ) : certifications.length > 0 ? (
+                        certifications.map((cert, index) => {
+                            const getStatusColor = (status) => {
+                                switch (status) {
+                                    case 'verified': return '#4CAF50';
+                                    case 'pending': return '#FF9800';
+                                    case 'rejected': return '#F44336';
+                                    default: return '#999';
+                                }
+                            };
+                            
+                            const getStatusText = (status) => {
+                                switch (status) {
+                                    case 'verified': return 'Đã xác minh';
+                                    case 'pending': return 'Chờ xác minh';
+                                    case 'rejected': return 'Từ chối';
+                                    default: return 'Chưa xác minh';
+                                }
+                            };
+                            
+                            return (
+                                <TouchableOpacity
+                                    key={cert.certificationId || index}
+                                    style={styles.certCard}
+                                    onPress={() => {
+                                        setSelectedCert(cert);
+                                        setCertModalVisible(true);
+                                    }}
+                                >
+                                    <Ionicons name="ribbon" size={20} color="#FFB800" />
+                                    <View style={styles.certInfo}>
+                                        <Text style={styles.certName}>{cert.certName}</Text>
+                                        <Text style={styles.certOrg}>
+                                            {cert.issuedBy} • {new Date(cert.issuedDate).getFullYear()}
+                                        </Text>
+                                        <View style={[styles.certStatus, { backgroundColor: getStatusColor(cert.verificationStatus) + '20' }]}>
+                                            <Text style={[styles.certStatusText, { color: getStatusColor(cert.verificationStatus) }]}>
+                                                {getStatusText(cert.verificationStatus)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Ionicons name="eye-outline" size={20} color="#2196F3" />
+                                </TouchableOpacity>
+                            );
+                        })
+                    ) : (
+                        <Text style={styles.emptyText}>Chưa có chứng chỉ nào</Text>
+                    )}
+                </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     const renderPortfolio = () => (
         <View style={styles.section}>
@@ -238,22 +361,30 @@ export default function TechnicianProfileScreen({ navigation }) {
                 <View style={styles.profileHeader}>
                     <View style={styles.avatarContainer}>
                         <Ionicons name="person-circle" size={80} color="#FF6B35" />
-                        {technicianData.verified && (
+                        {workerProfile?.isVerified && (
                             <View style={styles.verifiedBadge}>
                                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                             </View>
                         )}
                     </View>
-                    <Text style={styles.userName}>{technicianData.name}</Text>
-                    <Text style={styles.specialization}>{technicianData.specialization}</Text>
+                    <Text style={styles.userName}>{user?.fullName || 'Thợ'}</Text>
+                    <Text style={styles.specialization}>
+                        {getSkillsDisplay().find(s => s.isPrimary)?.name || 'Thợ sửa chữa'}
+                    </Text>
                     <View style={styles.experienceBadge}>
                         <Ionicons name="briefcase" size={14} color="#FF6B35" />
-                        <Text style={styles.experienceText}>{technicianData.experience} năm kinh nghiệm</Text>
+                        <Text style={styles.experienceText}>
+                            {workerProfile?.completedJobs || 100} công việc hoàn thành
+                        </Text>
                     </View>
                     <View style={styles.ratingRow}>
                         <Ionicons name="star" size={18} color="#FFB800" />
-                        <Text style={styles.rating}>{technicianData.rating}</Text>
-                        <Text style={styles.ratingCount}>({technicianData.totalJobs} đánh giá)</Text>
+                        <Text style={styles.rating}>
+                            {workerProfile?.ratingAvg ? workerProfile.ratingAvg.toFixed(1) : '4.9'}
+                        </Text>
+                        <Text style={styles.ratingCount}>
+                            ({workerProfile?.ratingCount || 99} đánh giá)
+                        </Text>
                     </View>
                 </View>
 
@@ -290,8 +421,55 @@ export default function TechnicianProfileScreen({ navigation }) {
                 {/* Quick Actions */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Quản lý</Text>
+                    
+                    {/* Worker Profile Setup Warning */}
+                    {!user?.workerId && (
+                        <TouchableOpacity 
+                            style={styles.setupWarning}
+                            onPress={() => navigation.navigate('WorkerProfileSetup')}
+                        >
+                            <Ionicons name="warning" size={24} color="#FF9800" />
+                            <View style={styles.setupWarningText}>
+                                <Text style={styles.setupWarningTitle}>Chưa hoàn tất hồ sơ</Text>
+                                <Text style={styles.setupWarningDesc}>
+                                    Nhấn để thiết lập hồ sơ thợ và bắt đầu nhận việc
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#FF9800" />
+                        </TouchableOpacity>
+                    )}
+                    
                     {profileItems.map((item, index) => (
-                        <TouchableOpacity key={index} style={styles.menuItem}>
+                        <TouchableOpacity 
+                            key={index} 
+                            style={styles.menuItem}
+                            onPress={() => {
+                                if (item.screen === 'EditProfile' || item.screen === 'ManageCertifications' || item.screen === 'ManageSkills') {
+                                    // Kiểm tra workerId
+                                    if (!user?.workerId) {
+                                        Alert.alert(
+                                            'Chưa có hồ sơ thợ', 
+                                            'Bạn cần thiết lập hồ sơ thợ trước.',
+                                            [
+                                                { text: 'Hủy', style: 'cancel' },
+                                                { 
+                                                    text: 'Thiết lập ngay', 
+                                                    onPress: () => navigation.navigate('WorkerProfileSetup')
+                                                }
+                                            ]
+                                        );
+                                        return;
+                                    }
+                                    
+                                    // Pass workerId from user data
+                                    navigation.navigate(item.screen, { 
+                                        workerId: user.workerId 
+                                    });
+                                } else if (item.screen) {
+                                    navigation.navigate(item.screen);
+                                }
+                            }}
+                        >
                             <View style={styles.menuLeft}>
                                 <Ionicons name={item.icon} size={22} color="#666" />
                                 <Text style={styles.menuLabel}>{item.label}</Text>
@@ -327,16 +505,16 @@ export default function TechnicianProfileScreen({ navigation }) {
                             <ScrollView style={styles.modalBody}>
                                 {/* Certificate Image */}
                                 <View style={styles.certImageContainer}>
-                                    {selectedCert.imageUrl ? (
+                                    {selectedCert.documentUrl ? (
                                         <Image 
-                                            source={{ uri: selectedCert.imageUrl }}
+                                            source={{ uri: selectedCert.documentUrl }}
                                             style={styles.certImage}
                                             resizeMode="contain"
                                         />
                                     ) : (
                                         <View style={styles.certImageMock}>
                                             <Ionicons name="ribbon" size={60} color="#FFB800" />
-                                            <Text style={styles.certImageTitle}>{selectedCert.name}</Text>
+                                            <Text style={styles.certImageTitle}>{selectedCert.certName}</Text>
                                             <Text style={styles.certImageSubtitle}>Chưa có ảnh chứng chỉ</Text>
                                         </View>
                                     )}
@@ -348,31 +526,7 @@ export default function TechnicianProfileScreen({ navigation }) {
                                         <Ionicons name="document-text" size={20} color="#FF6B35" />
                                         <View style={styles.certDetailText}>
                                             <Text style={styles.certDetailLabel}>Tên chứng chỉ</Text>
-                                            <Text style={styles.certDetailValue}>{selectedCert.name}</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.certDetailRow}>
-                                        <Ionicons name="business" size={20} color="#FF6B35" />
-                                        <View style={styles.certDetailText}>
-                                            <Text style={styles.certDetailLabel}>Tổ chức cấp</Text>
-                                            <Text style={styles.certDetailValue}>{selectedCert.org}</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.certDetailRow}>
-                                        <Ionicons name="calendar" size={20} color="#FF6B35" />
-                                        <View style={styles.certDetailText}>
-                                            <Text style={styles.certDetailLabel}>Năm cấp</Text>
-                                            <Text style={styles.certDetailValue}>{selectedCert.year}</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.certDetailRow}>
-                                        <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                                        <View style={styles.certDetailText}>
-                                            <Text style={styles.certDetailLabel}>Trạng thái</Text>
-                                            <Text style={styles.certStatusValid}>Đã xác thực ✓</Text>
+                                            <Text style={styles.certDetailValue}>{selectedCert.certName}</Text>
                                         </View>
                                     </View>
 
@@ -380,15 +534,92 @@ export default function TechnicianProfileScreen({ navigation }) {
                                         <Ionicons name="shield-checkmark" size={20} color="#FF6B35" />
                                         <View style={styles.certDetailText}>
                                             <Text style={styles.certDetailLabel}>Mã chứng chỉ</Text>
-                                            <Text style={styles.certDetailValue}>CERT-{selectedCert.year}-{Math.random().toString(36).substr(2, 6).toUpperCase()}</Text>
+                                            <Text style={styles.certDetailValue}>{selectedCert.certNumber}</Text>
                                         </View>
                                     </View>
+
+                                    <View style={styles.certDetailRow}>
+                                        <Ionicons name="business" size={20} color="#FF6B35" />
+                                        <View style={styles.certDetailText}>
+                                            <Text style={styles.certDetailLabel}>Tổ chức cấp</Text>
+                                            <Text style={styles.certDetailValue}>{selectedCert.issuedBy}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.certDetailRow}>
+                                        <Ionicons name="calendar" size={20} color="#FF6B35" />
+                                        <View style={styles.certDetailText}>
+                                            <Text style={styles.certDetailLabel}>Ngày cấp</Text>
+                                            <Text style={styles.certDetailValue}>
+                                                {new Date(selectedCert.issuedDate).toLocaleDateString('vi-VN')}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {selectedCert.expiryDate && (
+                                        <View style={styles.certDetailRow}>
+                                            <Ionicons name="time" size={20} color="#FF6B35" />
+                                            <View style={styles.certDetailText}>
+                                                <Text style={styles.certDetailLabel}>Ngày hết hạn</Text>
+                                                <Text style={styles.certDetailValue}>
+                                                    {new Date(selectedCert.expiryDate).toLocaleDateString('vi-VN')}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    <View style={styles.certDetailRow}>
+                                        <Ionicons 
+                                            name={selectedCert.isVerified ? "checkmark-circle" : "time"} 
+                                            size={20} 
+                                            color={selectedCert.isVerified ? "#4CAF50" : "#FF9800"} 
+                                        />
+                                        <View style={styles.certDetailText}>
+                                            <Text style={styles.certDetailLabel}>Trạng thái</Text>
+                                            <Text style={[
+                                                styles.certDetailValue,
+                                                { color: selectedCert.isVerified ? '#4CAF50' : '#FF9800' }
+                                            ]}>
+                                                {selectedCert.isVerified ? 'Đã xác thực ✓' : 'Chờ xác thực'}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {selectedCert.verifiedAt && (
+                                        <View style={styles.certDetailRow}>
+                                            <Ionicons name="checkmark-done" size={20} color="#4CAF50" />
+                                            <View style={styles.certDetailText}>
+                                                <Text style={styles.certDetailLabel}>Ngày xác thực</Text>
+                                                <Text style={styles.certDetailValue}>
+                                                    {new Date(selectedCert.verifiedAt).toLocaleDateString('vi-VN')}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {selectedCert.isExpired && (
+                                        <View style={styles.certDetailRow}>
+                                            <Ionicons name="warning" size={20} color="#F44336" />
+                                            <View style={styles.certDetailText}>
+                                                <Text style={styles.certDetailLabel}>Cảnh báo</Text>
+                                                <Text style={[styles.certDetailValue, { color: '#F44336' }]}>
+                                                    Chứng chỉ đã hết hạn
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
                                 </View>
 
                                 <View style={styles.certNote}>
-                                    <Ionicons name="information-circle" size={18} color="#2196F3" />
+                                    <Ionicons 
+                                        name="information-circle" 
+                                        size={18} 
+                                        color={selectedCert.isVerified ? "#2196F3" : "#FF9800"} 
+                                    />
                                     <Text style={styles.certNoteText}>
-                                        Chứng chỉ này đã được xác thực bởi hệ thống và đảm bảo tính chính xác.
+                                        {selectedCert.isVerified 
+                                            ? 'Chứng chỉ này đã được xác thực bởi hệ thống và đảm bảo tính chính xác.'
+                                            : 'Chứng chỉ đang chờ admin xác minh. Bạn sẽ nhận thông báo khi được duyệt.'}
                                     </Text>
                                 </View>
                             </ScrollView>
@@ -769,6 +1000,24 @@ const styles = StyleSheet.create({
         color: '#FF3B30',
         fontWeight: '600',
     },
+    certStatus: {
+        marginTop: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        alignSelf: 'flex-start',
+    },
+    certStatusText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
+        paddingVertical: 20,
+        fontStyle: 'italic',
+    },
     // Modal styles
     modalOverlay: {
         flex: 1,
@@ -838,6 +1087,28 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#999',
         fontStyle: 'italic',
+    },
+    setupWarning: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 15,
+        backgroundColor: '#FFF3E0',
+        borderRadius: 10,
+        marginBottom: 15,
+        gap: 12,
+    },
+    setupWarningText: {
+        flex: 1,
+    },
+    setupWarningTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#F57C00',
+        marginBottom: 4,
+    },
+    setupWarningDesc: {
+        fontSize: 13,
+        color: '#666',
     },
     certDetails: {
         gap: 15,

@@ -39,6 +39,10 @@ import IncomingRequestScreen from '../screens/technician/IncomingRequestScreen';
 import ActiveJobScreen from '../screens/technician/ActiveJobScreen';
 import JobCompletionScreen from '../screens/technician/JobCompletionScreen';
 import ReviewsScreen from '../screens/technician/ReviewsScreen';
+import ManageCertificationsScreen from '../screens/technician/ManageCertificationsScreen';
+import ManageSkillsScreen from '../screens/technician/ManageSkillsScreen';
+import WorkerProfileSetupScreen from '../screens/technician/WorkerProfileSetupScreen';
+import EditProfileScreen from '../screens/technician/EditProfileScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -234,6 +238,8 @@ function TechnicianStack() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="TechnicianHome" component={TechnicianHomeScreen} />
             <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="WorkerProfileSetup" component={WorkerProfileSetupScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="Jobs" component={JobsScreen} />
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
             <Stack.Screen name="Earnings" component={EarningsScreen} />
@@ -243,6 +249,21 @@ function TechnicianStack() {
             <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
             <Stack.Screen name="JobCompletion" component={JobCompletionScreen} />
             <Stack.Screen name="Reviews" component={ReviewsScreen} />
+            <Stack.Screen name="ManageCertifications" component={ManageCertificationsScreen} />
+            <Stack.Screen name="ManageSkills" component={ManageSkillsScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Technician Profile Stack Navigator
+function TechnicianProfileStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="WorkerProfileSetup" component={WorkerProfileSetupScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="ManageCertifications" component={ManageCertificationsScreen} />
+            <Stack.Screen name="ManageSkills" component={ManageSkillsScreen} />
         </Stack.Navigator>
     );
 }
@@ -303,7 +324,7 @@ function TechnicianTabs() {
             />
             <Tab.Screen
                 name="TechnicianProfileTab"
-                component={TechnicianProfileScreen}
+                component={TechnicianProfileStack}
                 options={{ tabBarLabel: 'Tài Khoản' }}
             />
         </Tab.Navigator>

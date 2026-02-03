@@ -145,50 +145,6 @@ const authService = {
             throw error;
         }
     },
-
-    /**
-     * Yêu cầu OTP đăng nhập qua số điện thoại
-     * @param {string} phone - Số điện thoại
-     * @returns {Promise<{message: string, expiresInSeconds: number}>}
-     */
-    requestPhoneLogin: async (phone) => {
-        console.log('OTP request response:', phone);
-        try {
-            const response = await apiClient.post('/api/identity/phone/request-login', {
-                phone: phone,
-            });
-            // Response: { message: "OTP đã được gửi.", expiresInSeconds: 60 }
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    /**
-     * Xác thực OTP và đăng nhập
-     * @param {string} phone - Số điện thoại
-     * @param {string} otp - Mã OTP
-     * @returns {Promise<{accessToken: string}>}
-     */
-    verifyPhoneLogin: async (phone, otp) => {
-        try {
-            const response = await apiClient.post('/api/identity/phone/verify-login', {
-                phone: phone,
-                otp: otp,
-            });
-            // Response: { accessToken: "<jwt>" }
-            const { accessToken } = response.data;
-            
-            // Lưu token vào AsyncStorage
-            if (accessToken) {
-                await AsyncStorage.setItem(TOKEN_KEY, accessToken);
-            }
-            
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
 };
 
 export default authService;
