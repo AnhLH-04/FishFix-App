@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,59 +7,93 @@ import {
     TouchableOpacity,
     TextInput,
     Dimensions,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getRootCategories, getAllCategories } from '../../services/categoryService';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showAllCategories, setShowAllCategories] = useState(false);
 
-    const serviceCategories = [
-        {
-            id: 1,
-            name: 'Máy Giặt',
-            icon: 'water',
-            gradient: ['#4A90E2', '#2196F3'],
-            iconBg: '#E3F2FD',
-        },
-        {
-            id: 2,
-            name: 'Điện Nước',
-            icon: 'flash',
-            gradient: ['#FF9800', '#F57C00'],
-            iconBg: '#FFF3E0',
-        },
-        {
-            id: 3,
-            name: 'Điều Hòa',
-            icon: 'snow',
-            gradient: ['#00BCD4', '#0097A7'],
-            iconBg: '#E0F7FA',
-        },
-        {
-            id: 4,
-            name: 'Tủ Lạnh',
-            icon: 'cube',
-            gradient: ['#9C27B0', '#7B1FA2'],
-            iconBg: '#F3E5F5',
-        },
-        {
-            id: 5,
-            name: 'Bếp Gas',
-            icon: 'flame',
-            gradient: ['#F44336', '#D32F2F'],
-            iconBg: '#FFEBEE',
-        },
-        {
-            id: 6,
-            name: 'Đồ Gia Dụng',
-            icon: 'home',
-            gradient: ['#4CAF50', '#388E3C'],
-            iconBg: '#E8F5E9',
-        },
-    ];
+    // Icon mapping cho từng category (khớp với tên từ API)
+    const categoryIcons = {
+        // Parent categories
+        'Điện lạnh': { icon: 'snow', gradient: ['#00BCD4', '#0097A7'], iconBg: '#E0F7FA' },
+        'Điện nước': { icon: 'flash', gradient: ['#FF9800', '#F57C00'], iconBg: '#FFF3E0' },
+        'Điện tử': { icon: 'construct', gradient: ['#2196F3', '#1976D2'], iconBg: '#E3F2FD' },
+        // Sub categories
+        'Máy giặt': { icon: 'water', gradient: ['#4A90E2', '#2196F3'], iconBg: '#E3F2FD' },
+        'Máy lạnh': { icon: 'snow', gradient: ['#00BCD4', '#0097A7'], iconBg: '#E0F7FA' },
+        'Tủ lạnh': { icon: 'cube', gradient: ['#9C27B0', '#7B1FA2'], iconBg: '#F3E5F5' },
+        'Ống nước': { icon: 'water-outline', gradient: ['#03A9F4', '#0288D1'], iconBg: '#E1F5FE' },
+        'Điện dân dụng': { icon: 'bulb', gradient: ['#FFC107', '#FFA000'], iconBg: '#FFF8E1' },
+        'Ti vi': { icon: 'tv', gradient: ['#9C27B0', '#7B1FA2'], iconBg: '#F3E5F5' },
+        'Máy tính': { icon: 'desktop', gradient: ['#607D8B', '#455A64'], iconBg: '#ECEFF1' },
+        // Legacy names
+        'Điều Hòa': { icon: 'snow', gradient: ['#00BCD4', '#0097A7'], iconBg: '#E0F7FA' },
+        'Bếp Gas': { icon: 'flame', gradient: ['#F44336', '#D32F2F'], iconBg: '#FFEBEE' },
+        'Đồ Gia Dụng': { icon: 'home', gradient: ['#4CAF50', '#388E3C'], iconBg: '#E8F5E9' },
+    };
+
+    // Load categories từ API
+    useEffect(() => {
+        loadCategories();
+    }, []);
+
+    const loadCategories = async () => {
+        try {
+            setLoading(true);
+            const data = await getAllCategories(); // Lấy tất cả categories
+            
+            console.log('Categories from API:', data); // Debug log
+            
+            // Nếu không có data từ API, dùng fallback
+            if (!data || data.length === 0) {
+                console.log('No categories from API, using fallback data');
+                setCategories([
+                    { categoryId: '1', categoryName: 'Máy Giặt', icon: 'water', gradient: ['#4A90E2', '#2196F3'], iconBg: '#E3F2FD' },
+                    { categoryId: '2', categoryName: 'Điện Nước', icon: 'flash', gradient: ['#FF9800', '#F57C00'], iconBg: '#FFF3E0' },
+                    { categoryId: '3', categoryName: 'Điều Hòa', icon: 'snow', gradient: ['#00BCD4', '#0097A7'], iconBg: '#E0F7FA' },
+                    { categoryId: '4', categoryName: 'Tủ Lạnh', icon: 'cube', gradient: ['#9C27B0', '#7B1FA2'], iconBg: '#F3E5F5' },
+                    { categoryId: '5', categoryName: 'Bếp Gas', icon: 'flame', gradient: ['#F44336', '#D32F2F'], iconBg: '#FFEBEE' },
+                    { categoryId: '6', categoryName: 'Đồ Gia Dụng', icon: 'home', gradient: ['#4CAF50', '#388E3C'], iconBg: '#E8F5E9' },
+                ]);
+                return;
+            }
+            
+            // Map categories với icons
+            const mappedCategories = data.map(cat => ({
+                ...cat,
+                categoryName: cat.name, // API trả về field 'name'
+                icon: categoryIcons[cat.name]?.icon || 'construct',
+                gradient: categoryIcons[cat.name]?.gradient || ['#2196F3', '#1976D2'],
+                iconBg: categoryIcons[cat.name]?.iconBg || '#E3F2FD',
+            }));
+            
+            console.log('Mapped categories:', mappedCategories); // Debug log
+            setCategories(mappedCategories);
+        } catch (error) {
+            console.error('Load categories error:', error);
+            // Fallback data khi có lỗi
+            setCategories([
+                { categoryId: '1', categoryName: 'Máy Giặt', icon: 'water', gradient: ['#4A90E2', '#2196F3'], iconBg: '#E3F2FD' },
+                { categoryId: '2', categoryName: 'Điện Nước', icon: 'flash', gradient: ['#FF9800', '#F57C00'], iconBg: '#FFF3E0' },
+                { categoryId: '3', categoryName: 'Điều Hòa', icon: 'snow', gradient: ['#00BCD4', '#0097A7'], iconBg: '#E0F7FA' },
+                { categoryId: '4', categoryName: 'Tủ Lạnh', icon: 'cube', gradient: ['#9C27B0', '#7B1FA2'], iconBg: '#F3E5F5' },
+                { categoryId: '5', categoryName: 'Bếp Gas', icon: 'flame', gradient: ['#F44336', '#D32F2F'], iconBg: '#FFEBEE' },
+                { categoryId: '6', categoryName: 'Đồ Gia Dụng', icon: 'home', gradient: ['#4CAF50', '#388E3C'], iconBg: '#E8F5E9' },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const quickActions = [
         {
@@ -120,30 +154,40 @@ const HomeScreen = ({ navigation }) => {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Dịch Vụ Sửa Chữa</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.seeAll}>Xem tất cả</Text>
+                        <TouchableOpacity onPress={() => setShowAllCategories(!showAllCategories)}>
+                            <Text style={styles.seeAll}>
+                                {showAllCategories ? 'Thu gọn' : 'Xem tất cả'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={styles.categoriesGrid}>
-                        {serviceCategories.map((category) => (
-                            <TouchableOpacity
-                                key={category.id}
-                                style={styles.categoryCard}
-                                onPress={() =>
-                                    navigation.navigate('ServiceDetail', { service: category.name })
-                                }
-                            >
-                                <View style={[styles.categoryIconContainer, { backgroundColor: category.iconBg }]}>
-                                    <Ionicons
-                                        name={category.icon}
-                                        size={32}
-                                        color={category.gradient[0]}
-                                    />
-                                </View>
-                                <Text style={styles.categoryName}>{category.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#2196F3" style={{ marginVertical: 20 }} />
+                    ) : (
+                        <View style={styles.categoriesGrid}>
+                            {(showAllCategories ? categories : categories.slice(0, 6)).map((category) => (
+                                <TouchableOpacity
+                                    key={category.categoryId}
+                                    style={styles.categoryCard}
+                                    onPress={() =>
+                                        navigation.navigate('ServiceDetail', { 
+                                            service: category.categoryName,
+                                            categoryId: category.categoryId
+                                        })
+                                    }
+                                >
+                                    <View style={[styles.categoryIconContainer, { backgroundColor: category.iconBg }]}>
+                                        <Ionicons
+                                            name={category.icon}
+                                            size={32}
+                                            color={category.gradient[0]}
+                                        />
+                                    </View>
+                                    <Text style={styles.categoryName}>{category.categoryName}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
 
                 {/* AI Diagnosis Card */}

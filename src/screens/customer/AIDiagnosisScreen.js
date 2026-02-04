@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { analyzeImage } from '../services/aiService';
+import { analyzeImage } from '../../services/aiService';
 
 const AIDiagnosisScreen = ({ navigation }) => {
     const [selectedImage, setSelectedImage] = useState(null);

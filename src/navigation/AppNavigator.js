@@ -13,20 +13,23 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 // Customer Screens
-import HomeScreen from '../screens/HomeScreen';
-import AIDiagnosisScreen from '../screens/AIDiagnosisScreen';
-import ServiceDetailScreen from '../screens/ServiceDetailScreen';
-import TechnicianListScreen from '../screens/TechnicianListScreen';
-import BookingScreen from '../screens/BookingScreen';
-import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
-import MaintenanceScreen from '../screens/MaintenanceScreen';
+import HomeScreen from '../screens/customer/HomeScreen';
+import AIDiagnosisScreen from '../screens/customer/AIDiagnosisScreen';
+import ServiceDetailScreen from '../screens/customer/ServiceDetailScreen';
+import CreateJobScreen from '../screens/customer/CreateJobScreen';
+import TechnicianListScreen from '../screens/customer/TechnicianListScreen';
+import BookingScreen from '../screens/customer/BookingScreen';
+import BookingConfirmationScreen from '../screens/customer/BookingConfirmationScreen';
+import MaintenanceScreen from '../screens/customer/MaintenanceScreen';
+import BookingTypeScreen from '../screens/customer/BookingTypeScreen';
+import NearbyTechniciansScreen from '../screens/customer/NearbyTechniciansScreen';
+import InstantBookingScreen from '../screens/customer/InstantBookingScreen';
+import InstantBookingConfirmationScreen from '../screens/customer/InstantBookingConfirmationScreen';
+
+// Common Screens
 import BookingsScreen from '../screens/BookingsScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import BookingTypeScreen from '../screens/BookingTypeScreen';
-import NearbyTechniciansScreen from '../screens/NearbyTechniciansScreen';
-import InstantBookingScreen from '../screens/InstantBookingScreen';
-import InstantBookingConfirmationScreen from '../screens/InstantBookingConfirmationScreen';
 
 // Technician Screens
 import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
@@ -70,6 +73,13 @@ function HomeStack() {
         >
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+            <Stack.Screen 
+                name="CreateJob" 
+                component={CreateJobScreen}
+                options={{
+                    headerShown: false,
+                }}
+            />
             <Stack.Screen name="AIDiagnosis" component={AIDiagnosisScreen} />
             <Stack.Screen name="BookingType" component={BookingTypeScreen} />
             <Stack.Screen name="NearbyTechnicians" component={NearbyTechniciansScreen} />
