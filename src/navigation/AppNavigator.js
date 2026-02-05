@@ -322,8 +322,8 @@ function TechnicianTabs() {
                     backgroundColor: '#fff',
                     borderTopWidth: 1,
                     borderTopColor: '#e0e0e0',
-                    height: 60,
-                    paddingBottom: 8,
+                    height: 80,
+                    paddingBottom: 20,
                     paddingTop: 8,
                 },
                 tabBarLabelStyle: {

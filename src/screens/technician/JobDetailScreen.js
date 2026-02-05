@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
     View,
     Text,
@@ -10,24 +10,55 @@ import {
     Alert,
     Image,
     Linking,
+    TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import jobService from '../../services/jobService';
 import locationService from '../../services/locationService';
+import bidService from '../../services/bidService';
+import workerService from '../../services/workerService';
+import { useAuth } from '../../context/AuthContext';
 
 export default function JobDetailScreen({ route, navigation }) {
-    const { jobId } = route.params || {};
-    const [job, setJob] = useState(null);
+    const { jobId, job: passedJob } = route.params || {};
+    const { user } = useAuth();
+    const [job, setJob] = useState(passedJob || null);
+    const [workerProfile, setWorkerProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const [bidAmount, setBidAmount] = useState('');
+    const [bidMessage, setBidMessage] = useState('');
+    const [estimatedHours, setEstimatedHours] = useState('');
+    const [submittingBid, setSubmittingBid] = useState(false);
 
     useEffect(() => {
-        if (jobId) {
+        console.log('🔍 JobDetailScreen params:', { jobId, passedJob: !!passedJob, userId: user?.id });
+        console.log('👤 Current user object:', user);
+        
+        // If job is passed directly, use it
+        if (passedJob) {
+            setJob(passedJob);
+            if (passedJob.estimatedBudget) {
+                setBidAmount(passedJob.estimatedBudget.toString());
+            }
+            setLoading(false);
+        } else if (jobId) {
+            // Otherwise fetch by jobId
             fetchJobDetail();
         } else {
+            console.warn('⚠️ No jobId or job provided');
             setLoading(false);
         }
-    }, [jobId]);
+
+        // Fetch worker profile if user is available
+        if (user?.id) {
+            console.log('✅ User found, fetching worker profile...');
+            fetchWorkerProfile();
+        } else {
+            console.error('❌ No user or id available!', { user });
+        }
+    }, [jobId, passedJob, user]);
 
     const fetchJobDetail = async () => {
         try {
@@ -35,12 +66,139 @@ export default function JobDetailScreen({ route, navigation }) {
             const jobData = await jobService.getJobById(jobId);
             console.log('📍 Job detail loaded:', jobData);
             setJob(jobData);
+            // Pre-fill bid amount with job's estimated budget
+            if (jobData.estimatedBudget) {
+                setBidAmount(jobData.estimatedBudget.toString());
+            }
         } catch (error) {
             console.error('Error fetching job detail:', error);
             Alert.alert('Lỗi', 'Không thể tải thông tin công việc');
             navigation.goBack();
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchWorkerProfile = async () => {
+        if (!user?.id) {
+            console.warn('⚠️ No userId available');
+            return;
+        }
+
+        setLoadingProfile(true);
+        try {
+            console.log('🔍 Fetching worker profile for userId:', user.id);
+            // Gọi API: GET /api/dispatch/workers/by-user/{userId}
+            const profile = await workerService.getWorkerByUserId(user.id);
+            console.log('👷 Worker profile loaded:', profile);
+            
+            if (!profile || !profile.workerId) {
+                console.warn('⚠️ No worker profile found - using userId as workerId');
+                // API trả về null hoặc không có workerId → dùng userId
+                setWorkerProfile({
+                    workerId: user.id,
+                    userId: user.id,
+                });
+            } else {
+                // API trả về profile thành công
+                setWorkerProfile(profile);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching worker profile:', error);
+            console.error('Error details:', error.response?.data);
+            // Lỗi API → dùng userId làm workerId
+            console.warn('⚠️ Using userId as workerId due to error');
+            setWorkerProfile({
+                workerId: user.id,
+                userId: user.id,
+            });
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
+    const handleCreateBid = async () => {
+        console.log('🎯 handleCreateBid called', { 
+            hasBidAmount: !!bidAmount, 
+            hasWorkerProfile: !!workerProfile,
+            workerId: workerProfile?.workerId,
+            userId: user?.id,
+            loadingProfile
+        });
+
+        if (loadingProfile) {
+            Alert.alert('Thông báo', 'Đang tải thông tin hồ sơ, vui lòng đợi...');
+            return;
+        }
+
+        if (!bidAmount) {
+            Alert.alert('Lỗi', 'Vui lòng nhập giá đề nghị');
+            return;
+        }
+
+        const amount = parseFloat(bidAmount);
+        if (isNaN(amount) || amount <= 0) {
+            Alert.alert('Lỗi', 'Giá đề nghị không hợp lệ');
+            return;
+        }
+
+        const currentJobId = jobId || job?.jobId;
+        if (!currentJobId) {
+            Alert.alert('Lỗi', 'Không tìm thấy thông tin công việc');
+            return;
+        }
+
+        // Đảm bảo có workerId - dùng từ profile hoặc userId
+        const currentWorkerId = workerProfile?.workerId || user?.id;
+        if (!currentWorkerId) {
+            Alert.alert('Lỗi', 'Không xác định được thông tin người dùng. Vui lòng đăng nhập lại.');
+            return;
+        }
+
+        console.log('✅ Using workerId:', currentWorkerId);
+
+        try {
+            setSubmittingBid(true);
+
+            const bidData = {
+                workerId: currentWorkerId,
+                amount: amount,
+            };
+
+            // Add optional fields if provided
+            if (bidMessage.trim()) {
+                bidData.message = bidMessage.trim();
+            }
+            if (estimatedHours) {
+                const hours = parseFloat(estimatedHours);
+                if (!isNaN(hours) && hours > 0) {
+                    bidData.estimatedHours = hours;
+                    // Calculate estimated completion time
+                    const completionDate = new Date();
+                    completionDate.setHours(completionDate.getHours() + hours);
+                    bidData.estimatedCompletion = completionDate.toISOString();
+                }
+            }
+
+            console.log('📝 Creating bid:', bidData);
+            const bidId = await bidService.createBid(currentJobId, bidData);
+
+            Alert.alert(
+                'Thành công',
+                `Đã gửi báo giá thành công!\n\nMã báo giá: ${bidId}\nGiá: ${amount.toLocaleString('vi-VN')}đ`,
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => navigation.goBack(),
+                    },
+                ]
+            );
+        } catch (error) {
+            console.error('Error creating bid:', error);
+            const errorMessage = error.response?.data?.message || 'Không thể gửi báo giá. Vui lòng thử lại.';
+            Alert.alert('Lỗi', errorMessage);
+        } finally {
+            setSubmittingBid(false);
         }
     };
 
@@ -63,6 +221,7 @@ export default function JobDetailScreen({ route, navigation }) {
     }
 
     if (!job) {
+        console.warn('⚠️ Job is null, showing empty state');
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
@@ -75,6 +234,12 @@ export default function JobDetailScreen({ route, navigation }) {
                 <View style={styles.emptyContainer}>
                     <Ionicons name="alert-circle-outline" size={64} color="#ccc" />
                     <Text style={styles.emptyText}>Không tìm thấy công việc</Text>
+                    <TouchableOpacity 
+                        style={styles.retryButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.retryText}>Quay lại</Text>
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
         );
@@ -203,31 +368,69 @@ export default function JobDetailScreen({ route, navigation }) {
                 </View>
             </ScrollView>
 
+            {/* Bid Form */}
+            <View style={styles.bidFormSection}>
+                <Text style={styles.sectionTitle}>Gửi báo giá</Text>
+                
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Giá đề nghị *</Text>
+                    <View style={styles.inputWithIcon}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Nhập giá đề nghị"
+                            keyboardType="numeric"
+                            value={bidAmount}
+                            onChangeText={setBidAmount}
+                            editable={!submittingBid}
+                        />
+                        <Text style={styles.inputSuffix}>đ</Text>
+                    </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Thời gian hoàn thành (giờ)</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="VD: 2"
+                        keyboardType="numeric"
+                        value={estimatedHours}
+                        onChangeText={setEstimatedHours}
+                        editable={!submittingBid}
+                    />
+                </View>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Lời nhắn cho khách hàng</Text>
+                    <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder="VD: Tôi có 5 năm kinh nghiệm sửa máy lạnh..."
+                        multiline
+                        numberOfLines={4}
+                        value={bidMessage}
+                        onChangeText={setBidMessage}
+                        editable={!submittingBid}
+                    />
+                </View>
+            </View>
+
             {/* Action Buttons */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.rejectButton} onPress={() => navigation.goBack()}>
                     <Text style={styles.rejectText}>Quay lại</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={() => {
-                        Alert.alert(
-                            'Xác nhận',
-                            'Bạn có chắc muốn nhận công việc này?',
-                            [
-                                { text: 'Hủy', style: 'cancel' },
-                                { 
-                                    text: 'Nhận việc', 
-                                    onPress: () => {
-                                        Alert.alert('Thành công', 'Đã nhận công việc!');
-                                        navigation.goBack();
-                                    }
-                                }
-                            ]
-                        );
-                    }}
+                    style={[
+                        styles.acceptButton, 
+                        (submittingBid || !bidAmount || loadingProfile) && styles.disabledButton
+                    ]}
+                    disabled={submittingBid || !bidAmount || loadingProfile}
+                    onPress={handleCreateBid}
                 >
-                    <Text style={styles.acceptText}>Nhận việc</Text>
+                    {submittingBid || loadingProfile ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text style={styles.acceptText}>Gửi báo giá</Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -483,5 +686,82 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    bidFormSection: {
+        backgroundColor: 'white',
+        padding: 20,
+        marginTop: 15,
+        borderRadius: 12,
+        marginHorizontal: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 8,
+    },
+    input: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        padding: 15,
+        fontSize: 16,
+        color: '#333',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    inputWithIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    inputSuffix: {
+        position: 'absolute',
+        right: 15,
+        fontSize: 16,
+        color: '#666',
+        fontWeight: '600',
+    },
+    textArea: {
+        height: 100,
+        textAlignVertical: 'top',
+    },
+    disabledButton: {
+        opacity: 0.5,
+    },
+    retryButton: {
+        marginTop: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        backgroundColor: '#FF6B35',
+        borderRadius: 8,
+    },
+    retryText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    warningBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: '#FFF3E0',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 15,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FF9800',
+    },
+    warningText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#E65100',
+        lineHeight: 20,
     },
 });

@@ -357,6 +357,28 @@ export default function TechnicianProfileScreen({ navigation }) {
             </View>
 
             <ScrollView>
+                {/* Setup Profile Warning - Nổi bật ở đầu */}
+                {!workerProfile && (
+                    <TouchableOpacity 
+                        style={styles.setupBanner}
+                        onPress={() => navigation.navigate('WorkerProfileSetup')}
+                    >
+                        <View style={styles.setupBannerContent}>
+                            <Ionicons name="alert-circle" size={40} color="#FF6B35" />
+                            <View style={styles.setupBannerText}>
+                                <Text style={styles.setupBannerTitle}>⚠️ Hoàn thiện hồ sơ ngay</Text>
+                                <Text style={styles.setupBannerDesc}>
+                                    Bạn cần thiết lập hồ sơ thợ để nhận việc và gửi báo giá
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={styles.setupBannerButton}>
+                            <Text style={styles.setupBannerButtonText}>Thiết lập ngay</Text>
+                            <Ionicons name="chevron-forward" size={20} color="white" />
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={styles.avatarContainer}>
@@ -1109,6 +1131,56 @@ const styles = StyleSheet.create({
     setupWarningDesc: {
         fontSize: 13,
         color: '#666',
+    },
+    setupBanner: {
+        backgroundColor: '#FFF3E0',
+        marginHorizontal: 15,
+        marginTop: 15,
+        marginBottom: 10,
+        borderRadius: 15,
+        padding: 20,
+        borderWidth: 2,
+        borderColor: '#FF6B35',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    setupBannerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 15,
+        marginBottom: 15,
+    },
+    setupBannerText: {
+        flex: 1,
+    },
+    setupBannerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FF6B35',
+        marginBottom: 6,
+    },
+    setupBannerDesc: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
+    },
+    setupBannerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FF6B35',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        gap: 8,
+    },
+    setupBannerButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: 'white',
     },
     certDetails: {
         gap: 15,

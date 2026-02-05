@@ -44,9 +44,9 @@ export default function TechnicianHomeScreen({ navigation }) {
     ];
 
     const quickActions = [
-        { icon: 'search', label: 'Tìm việc', screen: 'Jobs', color: '#FF6B35' },
+        { icon: 'search', label: 'Tìm việc', screen: 'NearbyJobs', color: '#FF6B35' },
         { icon: 'calendar', label: 'Lịch làm việc', screen: 'Schedule', color: '#2196F3' },
-        { icon: 'location', label: 'Việc gần đây', screen: 'Jobs', color: '#4CAF50' },
+        { icon: 'location', label: 'Việc gần đây', screen: 'NearbyJobs', color: '#4CAF50' },
         { icon: 'card', label: 'Thu nhập', screen: 'Earnings', color: '#9C27B0' },
     ];
 
