@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 const TechnicianListScreen = ({ navigation, route }) => {
-    const { category, problem } = route.params || {};
+    const { category, problem, serviceDetail, categoryId, isScheduledBooking } = route.params || {};
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     const technicians = [
@@ -85,7 +85,13 @@ const TechnicianListScreen = ({ navigation, route }) => {
     ];
 
     const handleBookTechnician = (technician) => {
-        navigation.navigate('Booking', { technician, category, problem });
+        navigation.navigate('Booking', { 
+            technician, 
+            category: serviceDetail?.categoryName || category, 
+            problem,
+            serviceDetail,
+            categoryId,
+        });
     };
 
     return (

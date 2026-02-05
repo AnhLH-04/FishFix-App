@@ -10,16 +10,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const BookingTypeScreen = ({ route, navigation }) => {
-    const { service, serviceDetail } = route.params || {};
+    const { service, serviceDetail, categoryId } = route.params || {};
 
     const handleInstantBooking = () => {
-        // Điều hướng đến danh sách thợ gần đang rảnh
-        navigation.navigate('NearbyTechnicians', { service, serviceDetail });
+        // Đặt lịch ngay - điều hướng đến CreateJobScreen
+        navigation.navigate('CreateJob', {
+            categoryId: categoryId,
+            categoryName: serviceDetail?.categoryName || service,
+            serviceName: serviceDetail?.name,
+            serviceDescription: serviceDetail?.description,
+            estimatedPrice: serviceDetail?.priceRange,
+        });
     };
 
     const handleScheduledBooking = () => {
-        // Điều hướng đến màn hình đặt lịch hẹn thông thường
-        navigation.navigate('TechnicianList', { service, serviceDetail });
+        // Đặt lịch hẹn - điều hướng thẳng đến BookingScreen (không cần chọn thợ trước)
+        navigation.navigate('Booking', { 
+            service, 
+            serviceDetail,
+            categoryId,
+            category: serviceDetail?.categoryName || service,
+            problem: serviceDetail?.description,
+            isScheduledBooking: true, // Flag để biết là đặt lịch hẹn
+        });
     };
 
     return (

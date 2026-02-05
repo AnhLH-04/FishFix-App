@@ -22,11 +22,6 @@ const CreateJobScreen = ({ route, navigation }) => {
     
     const { categoryId, categoryName, serviceName, serviceDescription, estimatedPrice } = route.params || {};
 
-    console.log('CreateJobScreen mounted');
-    console.log('CreateJobScreen params:', route.params);
-    console.log('User context:', user);
-
-
     const [description, setDescription] = useState(serviceDescription || '');
     const [address, setAddress] = useState('');
     const [ward, setWard] = useState('');
@@ -38,9 +33,9 @@ const CreateJobScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(false);
 
     const urgencyOptions = [
-        { value: 'low', label: 'Thấp', color: '#4CAF50', icon: 'time-outline' },
-        { value: 'medium', label: 'Trung bình', color: '#FF9800', icon: 'timer-outline' },
-        { value: 'high', label: 'Cao', color: '#F44336', icon: 'alert-circle-outline' },
+        { value: 'low', label: 'Thấp', color: '#3374f6ff', icon: 'time-outline' },
+        { value: 'medium', label: 'Trung bình', color: '#28e748ff', icon: 'timer-outline' },
+        { value: 'high', label: 'Cao', color: '#f7a72fff', icon: 'alert-circle-outline' },
         { value: 'emergency', label: 'Khẩn cấp', color: '#D32F2F', icon: 'warning-outline' },
     ];
 
@@ -103,6 +98,9 @@ const CreateJobScreen = ({ route, navigation }) => {
             }
 
             // Tạo job data
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
+            
             const jobData = {
                 customerId: user.id, // AuthContext lưu userId vào field 'id'
                 categoryId: categoryId,
@@ -117,8 +115,8 @@ const CreateJobScreen = ({ route, navigation }) => {
                 longitude: 106.7214,
                 urgency: urgency,
                 estimatedBudget: estimatedBudget ? parseFloat(estimatedBudget) : 500000,
-                preferredDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-                preferredTimeStart: "09:00:00",
+                preferredDate: now.toISOString().split('T')[0], // YYYY-MM-DD (hôm nay)
+                preferredTimeStart: currentTime, // Giờ hiện tại
                 preferredTimeEnd: "18:00:00",
             };
 
@@ -249,7 +247,11 @@ const CreateJobScreen = ({ route, navigation }) => {
                 {/* Urgency */}
                 <View style={styles.section}>
                     <Text style={styles.label}>Mức độ khẩn cấp</Text>
-                    <View style={styles.urgencyContainer}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.urgencyScrollContent}
+                    >
                         {urgencyOptions.map((option) => (
                             <TouchableOpacity
                                 key={option.value}
@@ -257,14 +259,14 @@ const CreateJobScreen = ({ route, navigation }) => {
                                     styles.urgencyBtn,
                                     urgency === option.value && {
                                         borderColor: option.color,
-                                        backgroundColor: option.color + '20',
+                                        backgroundColor: option.color + '15',
                                     },
                                 ]}
                                 onPress={() => setUrgency(option.value)}
                             >
                                 <Ionicons
                                     name={option.icon}
-                                    size={20}
+                                    size={24}
                                     color={urgency === option.value ? option.color : '#666'}
                                 />
                                 <Text
@@ -277,7 +279,7 @@ const CreateJobScreen = ({ route, navigation }) => {
                                 </Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
+                    </ScrollView>
                 </View>
 
                 {/* Address */}
@@ -461,20 +463,26 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 8,
     },
+    urgencyScrollContent: {
+        paddingVertical: 4,
+        gap: 12,
+    },
     urgencyBtn: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 12,
-        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 16,
         borderWidth: 2,
         borderColor: '#e0e0e0',
         backgroundColor: '#fff',
-        gap: 6,
+        gap: 8,
+        // minWidth: 140,
     },
     urgencyText: {
-        fontSize: 13,
+        fontSize: 14,
+        fontWeight: '600',
         color: '#666',
     },
     footer: {

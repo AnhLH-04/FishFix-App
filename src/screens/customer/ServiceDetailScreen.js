@@ -358,13 +358,14 @@ const ServiceDetailScreen = ({ route, navigation }) => {
             serviceDetail: serviceDetail
         });
         
-        // Navigate đến màn hình tạo job với category info
-        navigation.navigate('CreateJob', {
+        // Navigate đến màn hình chọn loại đặt lịch trước
+        navigation.navigate('BookingType', {
             categoryId: route.params?.categoryId,
-            categoryName: service,
-            serviceName: serviceDetail.name,
-            serviceDescription: serviceDetail.description,
-            estimatedPrice: serviceDetail.priceRange,
+            service: service,
+            serviceDetail: {
+                ...serviceDetail,
+                categoryName: service,
+            },
         });
     };
 

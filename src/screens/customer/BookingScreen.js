@@ -6,62 +6,190 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
+import { createJob } from '../../services/jobService';
 
 const BookingScreen = ({ navigation, route }) => {
-    const { technician, category, problem } = route.params;
+    const { technician, category, problem, serviceDetail, categoryId } = route.params || {};
+    const authContext = useAuth();
+    const user = authContext?.user;
+    
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedTime, setSelectedTime] = useState(null);
-    const [selectedPayment, setSelectedPayment] = useState('cash');
+    const [selectedPayment, setSelectedPayment] = useState('card');
+    const [loading, setLoading] = useState(false);
+    
+    // Đặt lịch hẹn có thể không có thợ (workerId = null)
+    const hasWorker = technician && technician.id;
 
-    const dates = [
-        { id: 1, day: 'T2', date: 16, month: 10, available: true },
-        { id: 2, day: 'T3', date: 17, month: 10, available: true },
-        { id: 3, day: 'T4', date: 18, month: 10, available: true },
-        { id: 4, day: 'T5', date: 19, month: 10, available: false },
-        { id: 5, day: 'T6', date: 20, month: 10, available: true },
-        { id: 6, day: 'T7', date: 21, month: 10, available: true },
-    ];
+    // Tạo 7 ngày từ ngày hiện tại
+    const generateNext7Days = () => {
+        const days = [];
+        const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        const today = new Date();
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            
+            days.push({
+                id: i + 1,
+                day: dayNames[date.getDay()],
+                date: date.getDate(),
+                month: date.getMonth() + 1,
+                year: date.getFullYear(),
+                available: true,
+                fullDate: date, // Lưu full date object để dùng sau
+            });
+        }
+        
+        return days;
+    };
 
-    const timeSlots = [
-        { id: 1, time: '08:00 - 10:00', available: true },
-        { id: 2, time: '10:00 - 12:00', available: true },
-        { id: 3, time: '12:00 - 14:00', available: false },
-        { id: 4, time: '14:00 - 16:00', available: true },
-        { id: 5, time: '16:00 - 18:00', available: true },
-        { id: 6, time: '18:00 - 20:00', available: true },
-    ];
+    const dates = generateNext7Days();
+
+    // Chỉ chọn giờ bắt đầu (không biết sửa bao lâu)
+    // Validate: nếu là hôm nay và giờ đã qua thì disable
+    const getAvailableTimeSlots = () => {
+        const baseSlots = [
+            { id: 1, time: '08:00' },
+            { id: 2, time: '09:00' },
+            { id: 3, time: '10:00' },
+            { id: 4, time: '11:00' },
+            { id: 5, time: '13:00' },
+            { id: 6, time: '14:00' },
+            { id: 7, time: '15:00' },
+            { id: 8, time: '16:00' },
+            { id: 9, time: '17:00' },
+        ];
+
+        // Nếu chưa chọn ngày, tất cả đều available
+        if (!selectedDate) {
+            return baseSlots.map(slot => ({ ...slot, available: true }));
+        }
+
+        const now = new Date();
+        const isToday = selectedDate.date === now.getDate() && 
+                       selectedDate.month === (now.getMonth() + 1) && 
+                       selectedDate.year === now.getFullYear();
+
+        // Nếu không phải hôm nay, tất cả đều available
+        if (!isToday) {
+            return baseSlots.map(slot => ({ ...slot, available: true }));
+        }
+
+        // Nếu là hôm nay, check giờ hiện tại
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        return baseSlots.map(slot => {
+            const [slotHour] = slot.time.split(':').map(Number);
+            // Disable nếu giờ đã qua
+            const isPast = slotHour < currentHour || (slotHour === currentHour && currentMinute > 0);
+            return {
+                ...slot,
+                available: !isPast
+            };
+        });
+    };
+
+    const timeSlots = getAvailableTimeSlots();
 
     const paymentMethods = [
-        // { id: 'cash', name: 'Tiền mặt', icon: 'cash' },
+        { id: 'cash', name: 'Tiền mặt', icon: 'cash' },
         { id: 'card', name: 'Thẻ ngân hàng', icon: 'card' },
         { id: 'momo', name: 'Ví MoMo', icon: 'wallet' },
         { id: 'zalopay', name: 'ZaloPay', icon: 'logo-bitcoin' },
     ];
 
-    const handleConfirmBooking = () => {
+    const handleConfirmBooking = async () => {
         if (!selectedDate || !selectedTime) {
             Alert.alert('Thông báo', 'Vui lòng chọn ngày và giờ hẹn');
             return;
         }
 
+        if (!user || !user.id) {
+            Alert.alert('Lỗi', 'Vui lòng đăng nhập để tiếp tục');
+            return;
+        }
+
+        const confirmMessage = hasWorker 
+            ? `Bạn muốn đặt lịch với ${technician.name}?\n\nNgày: ${selectedDate.date}/${selectedDate.month}/${selectedDate.year}\nGiờ bắt đầu: ${selectedTime.time}`
+            : `Xác nhận đặt lịch hẹn?\n\nDịch vụ: ${serviceDetail?.name || category}\nNgày: ${selectedDate.date}/${selectedDate.month}/${selectedDate.year}\nGiờ bắt đầu: ${selectedTime.time}\n\nHệ thống sẽ tự động tìm thợ phù hợp cho bạn.`;
+
         Alert.alert(
             'Xác nhận đặt lịch',
-            `Bạn muốn đặt lịch với ${technician.name}?\n\nNgày: ${selectedDate.date}/${selectedDate.month}\nGiờ: ${selectedTime.time}`,
+            confirmMessage,
             [
                 { text: 'Hủy', style: 'cancel' },
                 {
                     text: 'Xác nhận',
-                    onPress: () => {
-                        navigation.navigate('BookingConfirmation', {
-                            technician,
-                            date: selectedDate,
-                            time: selectedTime,
-                            payment: selectedPayment,
-                            category,
-                            problem,
-                        });
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+
+                            // Chỉ có giờ bắt đầu (format: "08:00")
+                            const startTime = selectedTime.time;
+                            
+                            // Create booking date string (format: YYYY-MM-DD)
+                            const preferredDate = `${selectedDate.year}-${String(selectedDate.month).padStart(2, '0')}-${String(selectedDate.date).padStart(2, '0')}`;
+
+                            // Tạo job data
+                            const jobData = {
+                                customerId: user.id,
+                                categoryId: categoryId || 1,
+                                title: serviceDetail?.name || category || 'Dịch vụ sửa chữa',
+                                description: problem || serviceDetail?.description || 'Đặt lịch hẹn',
+                                photoUrls: [], // Không có ảnh khi đặt lịch hẹn
+                                address: user.address || '123 Đường ABC, Quận 1',
+                                ward: user.ward || 'Phường 1',
+                                district: user.district || 'Quận 1',
+                                city: user.city || 'TP. Hồ Chí Minh',
+                                latitude: 10.7769,
+                                longitude: 106.7009,
+                                urgency: 'medium',
+                                estimatedBudget: 160000,
+                                preferredDate: preferredDate,
+                                preferredTimeStart: startTime + ':00',
+                                preferredTimeEnd: '18:00:00', // Giờ kết thúc mặc định (có thể để null nếu API cho phép)
+                            };
+
+                            console.log('Creating job:', jobData);
+
+                            // Call API
+                            const response = await createJob(jobData);
+                            const jobId = response.jobId;
+                            
+                            Alert.alert(
+                                'Thành công',
+                                'Đặt lịch hẹn thành công!',
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => {
+                                            navigation.navigate('BookingConfirmation', {
+                                                jobId,
+                                                technician,
+                                                date: selectedDate,
+                                                time: selectedTime,
+                                                payment: selectedPayment,
+                                                category,
+                                                problem,
+                                                serviceDetail,
+                                            });
+                                        },
+                                    },
+                                ]
+                            );
+                        } catch (error) {
+                            console.error('Booking error:', error);
+                            Alert.alert('Lỗi', 'Không thể tạo đặt lịch. Vui lòng thử lại');
+                        } finally {
+                            setLoading(false);
+                        }
                     },
                 },
             ]
@@ -83,30 +211,55 @@ const BookingScreen = ({ navigation, route }) => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Technician Info */}
+                {/* Technician or Service Info */}
                 <View style={styles.technicianCard}>
-                    <View style={styles.technicianHeader}>
-                        <Text style={styles.avatar}>{technician.avatar}</Text>
-                        <View style={styles.technicianInfo}>
-                            <Text style={styles.technicianName}>{technician.name}</Text>
-                            <Text style={styles.technicianSpecialty}>{technician.specialty}</Text>
-                            <View style={styles.ratingRow}>
-                                <Ionicons name="star" size={14} color="#FFD700" />
-                                <Text style={styles.ratingText}>{technician.rating}</Text>
-                                <Text style={styles.reviewsText}>({technician.reviews} đánh giá)</Text>
+                    {hasWorker ? (
+                        // Có thợ - hiển thị thông tin thợ
+                        <>
+                            <View style={styles.technicianHeader}>
+                                <Text style={styles.avatar}>{technician.avatar}</Text>
+                                <View style={styles.technicianInfo}>
+                                    <Text style={styles.technicianName}>{technician.name}</Text>
+                                    <Text style={styles.technicianSpecialty}>{technician.specialty}</Text>
+                                    <View style={styles.ratingRow}>
+                                        <Ionicons name="star" size={14} color="#FFD700" />
+                                        <Text style={styles.ratingText}>{technician.rating}</Text>
+                                        <Text style={styles.reviewsText}>({technician.reviews} đánh giá)</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </>
+                    ) : (
+                        // Không có thợ - hiển thị thông tin dịch vụ
+                        <View style={styles.serviceOnlyHeader}>
+                            <View style={styles.serviceIconContainer}>
+                                <Ionicons name="construct" size={32} color="#2196F3" />
+                            </View>
+                            <View style={styles.technicianInfo}>
+                                <Text style={styles.technicianName}>
+                                    {serviceDetail?.name || category || 'Dịch vụ sửa chữa'}
+                                </Text>
+                                <Text style={styles.technicianSpecialty}>
+                                    Hệ thống sẽ tự động tìm thợ phù hợp
+                                </Text>
+                                <View style={styles.autoAssignBadge}>
+                                    <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                                    <Text style={styles.autoAssignText}>Tự động chọn thợ</Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    )}
+                    
                     {category && (
                         <View style={styles.serviceInfo}>
                             <Text style={styles.serviceLabel}>Dịch vụ:</Text>
                             <Text style={styles.serviceValue}>{category}</Text>
                         </View>
                     )}
-                    {problem && (
+                    {(problem || serviceDetail?.description) && (
                         <View style={styles.serviceInfo}>
-                            <Text style={styles.serviceLabel}>Vấn đề:</Text>
-                            <Text style={styles.serviceValue}>{problem}</Text>
+                            <Text style={styles.serviceLabel}>Mô tả:</Text>
+                            <Text style={styles.serviceValue}>{problem || serviceDetail?.description}</Text>
                         </View>
                     )}
                 </View>
@@ -227,7 +380,9 @@ const BookingScreen = ({ navigation, route }) => {
                     <Text style={styles.summaryTitle}>Tóm Tắt Đơn Hàng</Text>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Phí dịch vụ:</Text>
-                        <Text style={styles.summaryValue}>{technician.price}</Text>
+                        <Text style={styles.summaryValue}>
+                            {hasWorker ? technician.price : (serviceDetail?.priceRange || '150,000đ')}
+                        </Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Phí di chuyển:</Text>
@@ -261,9 +416,19 @@ const BookingScreen = ({ navigation, route }) => {
                     <Text style={styles.bottomLabel}>Tổng thanh toán:</Text>
                     <Text style={styles.bottomPrice}>160,000đ</Text>
                 </View>
-                <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmBooking}>
-                    <Text style={styles.confirmButtonText}>Xác Nhận Đặt Lịch</Text>
-                    <Ionicons name="checkmark" size={20} color="#fff" />
+                <TouchableOpacity 
+                    style={[styles.confirmButton, loading && styles.confirmButtonDisabled]} 
+                    onPress={handleConfirmBooking}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <>
+                            <Text style={styles.confirmButtonText}>Xác Nhận Đặt Lịch</Text>
+                            <Ionicons name="checkmark" size={20} color="#fff" />
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
         </View>
@@ -313,6 +478,31 @@ const styles = StyleSheet.create({
     technicianInfo: {
         flex: 1,
         justifyContent: 'center',
+    },
+    serviceOnlyHeader: {
+        flexDirection: 'row',
+        marginBottom: 12,
+        alignItems: 'center',
+    },
+    serviceIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#E3F2FD',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    autoAssignBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+    },
+    autoAssignText: {
+        fontSize: 12,
+        color: '#4CAF50',
+        fontWeight: '600',
     },
     technicianName: {
         fontSize: 16,
@@ -567,6 +757,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         borderRadius: 24,
         elevation: 3,
+    },
+    confirmButtonDisabled: {
+        backgroundColor: '#B0BEC5',
+        elevation: 0,
     },
     confirmButtonText: {
         color: '#fff',
