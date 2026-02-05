@@ -13,3 +13,7 @@ export const CLOUDINARY_UPLOAD_PRESET = 'upload-LabManagement';
 // Neon Database (nếu cần)
 export const NEON_PROJECT_ID = 'steep-hill-68901638';
 export const NEON_BRANCH_ID = 'br-morning-dream-afaihqss';
+
+// Google AI Studio (Gemini) API Configuration
+export const GEMINI_API_KEY = 'AIzaSyARw4NxCZz1p8AHhNITrbJSXw1UaDPGXwU';
+export const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
