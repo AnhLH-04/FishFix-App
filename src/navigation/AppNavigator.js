@@ -46,6 +46,8 @@ import ManageCertificationsScreen from '../screens/technician/ManageCertificatio
 import ManageSkillsScreen from '../screens/technician/ManageSkillsScreen';
 import WorkerProfileSetupScreen from '../screens/technician/WorkerProfileSetupScreen';
 import EditProfileScreen from '../screens/technician/EditProfileScreen';
+import NearbyJobsScreen from '../screens/technician/NearbyJobsScreen';
+import JobMapScreen from '../screens/technician/JobMapScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -261,6 +263,19 @@ function TechnicianStack() {
             <Stack.Screen name="Reviews" component={ReviewsScreen} />
             <Stack.Screen name="ManageCertifications" component={ManageCertificationsScreen} />
             <Stack.Screen name="ManageSkills" component={ManageSkillsScreen} />
+            <Stack.Screen name="NearbyJobs" component={NearbyJobsScreen} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Technician Jobs Stack Navigator
+function TechnicianJobsStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="NearbyJobs" component={NearbyJobsScreen} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
         </Stack.Navigator>
     );
 }
@@ -324,7 +339,7 @@ function TechnicianTabs() {
             />
             <Tab.Screen
                 name="TechnicianJobsTab"
-                component={JobsScreen}
+                component={TechnicianJobsStack}
                 options={{ tabBarLabel: 'Công Việc' }}
             />
             <Tab.Screen

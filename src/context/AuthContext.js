@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import authService from '../services/authService';
+import locationService from '../services/locationService';
 
 const AuthContext = createContext({});
 
@@ -7,6 +8,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [userRole, setUserRole] = useState(null); // 'customer' hoặc 'technician'
     const [loading, setLoading] = useState(true); // Loading state cho auto-login
+    const [userLocation, setUserLocation] = useState(null); // Vị trí của user
 
     // Auto-login khi app khởi động
     useEffect(() => {
@@ -29,6 +31,9 @@ export const AuthProvider = ({ children }) => {
                         roleId: userInfo.roleId,
                     });
                     setUserRole(role);
+                    
+                    // Lấy vị trí của user
+                    fetchUserLocation();
                 }
             }
         } catch (error) {
@@ -40,26 +45,45 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const fetchUserLocation = async () => {
+        try {
+            const location = await locationService.getCurrentLocationWithAddress();
+            if (location) {
+                setUserLocation(location);
+                console.log('📍 User location:', location);
+            }
+        } catch (error) {
+            console.log('Failed to get location:', error.message);
+            // Location không bắt buộc, để null để user có thể nhập thủ công
+            setUserLocation(null);
+        }
+    };
+
     const login = (userData, role) => {
         setUser(userData);
         setUserRole(role);
+        // Lấy location sau khi login
+        fetchUserLocation();
     };
 
     const logout = async () => {
         await authService.logout();
         setUser(null);
         setUserRole(null);
+        setUserLocation(null);
     };
 
     const value = {
         user,
         userRole,
+        userLocation,
         login,
         logout,
         loading,
         isAuthenticated: !!user,
         isCustomer: userRole === 'customer',
         isTechnician: userRole === 'technician',
+        refreshLocation: fetchUserLocation,
     };
 
     return (

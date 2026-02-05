@@ -222,6 +222,33 @@ const workerService = {
             throw error;
         }
     },
+
+    /**
+     * Tìm thợ gần customer location theo category
+     * @param {Object} params
+     * @param {number} params.categoryId - ID của category cần tìm
+     * @param {number} params.latitude - Vị trí khách hàng (latitude)
+     * @param {number} params.longitude - Vị trí khách hàng (longitude)
+     * @param {number} params.radiusKm - Bán kính tìm kiếm (km), default 10km
+     * @returns {Promise<Array>} Danh sách thợ gần nhất với distance
+     */
+    getNearbyWorkers: async ({ categoryId, latitude, longitude, radiusKm = 10 }) => {
+        try {
+            const response = await apiClient.get('/api/dispatch/workers/nearby', {
+                params: {
+                    categoryId,
+                    latitude,
+                    longitude,
+                    radiusKm,
+                },
+            });
+            // Response: [{ workerId, userId, fullName, phone, bio, avatarUrl, rating, completedJobs, 
+            //              latitude, longitude, distance, skills: [...] }]
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
 };
 
 export default workerService;

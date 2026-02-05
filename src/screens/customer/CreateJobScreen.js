@@ -19,6 +19,7 @@ import { uploadMultipleImages } from '../../services/uploadService';
 const CreateJobScreen = ({ route, navigation }) => {
     const authContext = useAuth();
     const user = authContext?.user;
+    const userLocation = authContext?.userLocation;
     
     const { categoryId, categoryName, serviceName, serviceDescription, estimatedPrice } = route.params || {};
 
@@ -31,6 +32,16 @@ const CreateJobScreen = ({ route, navigation }) => {
     const [urgency, setUrgency] = useState('medium'); // low, medium, high, emergency
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Tự động điền địa chỉ từ location khi có
+    React.useEffect(() => {
+        if (userLocation && !address) {
+            setAddress(userLocation.street || userLocation.fullAddress || '');
+            setWard(userLocation.ward || '');
+            setDistrict(userLocation.district || '');
+            setCity(userLocation.city || 'TP. Hồ Chí Minh');
+        }
+    }, [userLocation]);
 
     const urgencyOptions = [
         { value: 'low', label: 'Thấp', color: '#3374f6ff', icon: 'time-outline' },
@@ -111,14 +122,21 @@ const CreateJobScreen = ({ route, navigation }) => {
                 ward: ward.trim() || 'Phường 1',
                 district: district.trim() || 'Quận 1',
                 city: city.trim(),
-                latitude: 10.7285, // Mặc định TP.HCM, sau này có thể dùng GPS
-                longitude: 106.7214,
+                latitude: userLocation?.latitude || 10.7285, // Lấy từ GPS nếu có
+                longitude: userLocation?.longitude || 106.7214, // Fallback TP.HCM
                 urgency: urgency,
                 estimatedBudget: estimatedBudget ? parseFloat(estimatedBudget) : 500000,
                 preferredDate: now.toISOString().split('T')[0], // YYYY-MM-DD (hôm nay)
                 preferredTimeStart: currentTime, // Giờ hiện tại
                 preferredTimeEnd: "18:00:00",
             };
+
+            console.log('📍 Creating job with location:', {
+                source: userLocation ? 'GPS' : 'Default (HCM)',
+                latitude: jobData.latitude,
+                longitude: jobData.longitude,
+                address: jobData.address,
+            });
 
             console.log('Sending job data:', jobData);
 
@@ -284,7 +302,25 @@ const CreateJobScreen = ({ route, navigation }) => {
 
                 {/* Address */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>Địa chỉ *</Text>
+                    <View style={styles.labelRow}>
+                        <Text style={styles.label}>Địa chỉ *</Text>
+                        {authContext?.refreshLocation && (
+                            <TouchableOpacity 
+                                style={styles.refreshLocationBtn}
+                                onPress={async () => {
+                                    try {
+                                        await authContext.refreshLocation();
+                                        Alert.alert('Thành công', 'Đã cập nhật vị trí của bạn');
+                                    } catch (error) {
+                                        Alert.alert('Lỗi', 'Không thể lấy vị trí hiện tại');
+                                    }
+                                }}
+                            >
+                                <Ionicons name="location" size={18} color="#2196F3" />
+                                <Text style={styles.refreshLocationText}>Dùng vị trí hiện tại</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <TextInput
                         style={styles.input}
                         placeholder="Số nhà, tên đường..."
@@ -388,6 +424,26 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#333',
         marginBottom: 12,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    refreshLocationBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 8,
+        backgroundColor: '#E3F2FD',
+    },
+    refreshLocationText: {
+        fontSize: 13,
+        color: '#2196F3',
+        fontWeight: '500',
     },
     categoryBox: {
         flexDirection: 'row',

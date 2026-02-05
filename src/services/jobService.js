@@ -80,10 +80,29 @@ export const acceptBid = async (bidId) => {
     }
 };
 
+/**
+ * Lấy danh sách jobs available (cho technician)
+ * @param {Object} params - Query parameters
+ * @param {number} params.categoryId - Lọc theo category (optional)
+ * @param {string} params.city - Lọc theo thành phố (optional)
+ * @param {string} params.district - Lọc theo quận (optional)
+ * @returns {Promise<Array>} Danh sách jobs available
+ */
+export const getAvailableJobs = async (params = {}) => {
+    try {
+        const response = await apiClient.get('/api/jobs/available', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Get available jobs error:', error);
+        throw error;
+    }
+};
+
 export default {
     createJob,
     getJobById,
     getJobsByCustomer,
     getBidsForJob,
     acceptBid,
+    getAvailableJobs,
 };

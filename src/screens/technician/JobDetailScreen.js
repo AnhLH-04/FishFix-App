@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,32 +6,86 @@ import {
     ScrollView,
     TouchableOpacity,
     SafeAreaView,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import jobService from '../../services/jobService';
+import locationService from '../../services/locationService';
 
 export default function JobDetailScreen({ route, navigation }) {
-    const { job } = route.params || {
-        job: {
-            service: 'Sửa máy lạnh',
-            address: '123 Nguyễn Văn Linh, Q.7',
-            customer: 'Nguyễn Văn A',
-            phone: '0123456789',
-            time: '14:00 - Hôm nay',
-            price: 500000,
-            distance: '2.5 km',
-            description: 'Máy lạnh không lạnh, có tiếng kêu lạ',
-        },
+    const { jobId } = route.params || {};
+    const [job, setJob] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (jobId) {
+            fetchJobDetail();
+        } else {
+            setLoading(false);
+        }
+    }, [jobId]);
+
+    const fetchJobDetail = async () => {
+        try {
+            setLoading(true);
+            const jobData = await jobService.getJobById(jobId);
+            console.log('📍 Job detail loaded:', jobData);
+            setJob(jobData);
+        } catch (error) {
+            console.error('Error fetching job detail:', error);
+            Alert.alert('Lỗi', 'Không thể tải thông tin công việc');
+            navigation.goBack();
+        } finally {
+            setLoading(false);
+        }
     };
 
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Ionicons name="arrow-back" size={24} color="#333" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Chi tiết công việc</Text>
+                    <View style={{ width: 24 }} />
+                </View>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#FF6B35" />
+                    <Text style={styles.loadingText}>Đang tải...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (!job) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Ionicons name="arrow-back" size={24} color="#333" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Chi tiết công việc</Text>
+                    <View style={{ width: 24 }} />
+                </View>
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="alert-circle-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>Không tìm thấy công việc</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     const jobDetails = [
-        { icon: 'construct', label: 'Dịch vụ', value: job.service },
-        { icon: 'location', label: 'Địa chỉ', value: job.address },
-        { icon: 'person', label: 'Khách hàng', value: job.customer },
-        { icon: 'call', label: 'Số điện thoại', value: job.phone },
-        { icon: 'time', label: 'Thời gian', value: job.time },
-        { icon: 'navigate', label: 'Khoảng cách', value: job.distance },
-        { icon: 'wallet', label: 'Thu nhập', value: (job.price ? job.price.toLocaleString('vi-VN') : '0') + 'đ' },
+        { icon: 'construct', label: 'Dịch vụ', value: job.title || 'N/A' },
+        { icon: 'location', label: 'Địa chỉ', value: `${job.address}, ${job.ward}, ${job.district}` },
+        { icon: 'business', label: 'Thành phố', value: job.city },
+        { icon: 'time', label: 'Thời gian', value: `${new Date(job.preferredDate).toLocaleDateString('vi-VN')} - ${job.preferredTimeStart?.substring(0, 5)}` },
+        { icon: 'wallet', label: 'Ngân sách', value: (job.estimatedBudget ? job.estimatedBudget.toLocaleString('vi-VN') : '0') + 'đ' },
     ];
 
     const equipmentNeeded = [
@@ -61,10 +115,10 @@ export default function JobDetailScreen({ route, navigation }) {
                             <Ionicons name="construct" size={32} color="#FF6B35" />
                         </View>
                         <View style={styles.serviceInfo}>
-                            <Text style={styles.serviceName}>{job.service}</Text>
+                            <Text style={styles.serviceName}>{job.title}</Text>
                             <View style={styles.priceTag}>
                                 <Text style={styles.priceText}>
-                                    {job.price ? job.price.toLocaleString('vi-VN') : '0'}đ
+                                    {job.estimatedBudget ? job.estimatedBudget.toLocaleString('vi-VN') : '0'}đ
                                 </Text>
                             </View>
                         </View>
@@ -96,46 +150,55 @@ export default function JobDetailScreen({ route, navigation }) {
                 </View>
 
                 {/* Equipment Needed */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Thiết bị cần mang</Text>
-                    {equipmentNeeded.map((equipment, index) => (
-                        <View key={index} style={styles.equipmentItem}>
-                            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                            <Text style={styles.equipmentText}>{equipment}</Text>
-                        </View>
-                    ))}
-                </View>
+                {job.photoUrls && job.photoUrls.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Hình ảnh</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {job.photoUrls.map((url, index) => (
+                                <Image
+                                    key={index}
+                                    source={{ uri: url }}
+                                    style={styles.jobPhoto}
+                                />
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Map Preview */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Vị trí</Text>
                     <TouchableOpacity
                         style={styles.mapPreview}
-                        onPress={() => navigation.navigate('MapView', { address: job.address })}
+                        onPress={() => {
+                            const url = locationService.getDirectionsUrl(
+                                null, null, 
+                                job.latitude, 
+                                job.longitude
+                            );
+                            Linking.openURL(url);
+                        }}
                     >
                         <Ionicons name="map" size={40} color="#FF6B35" />
-                        <Text style={styles.mapText}>Xem bản đồ</Text>
+                        <Text style={styles.mapText}>Chỉ đường</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Customer Info */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Thông tin khách hàng</Text>
-                    <View style={styles.customerCard}>
-                        <View style={styles.customerAvatar}>
-                            <Ionicons name="person" size={30} color="#FF6B35" />
-                        </View>
-                        <View style={styles.customerInfo}>
-                            <Text style={styles.customerName}>{job.customer}</Text>
-                            <View style={styles.customerRating}>
-                                <Ionicons name="star" size={14} color="#FFB800" />
-                                <Text style={styles.ratingText}>4.8</Text>
-                                <Text style={styles.ratingCount}>(25 đánh giá)</Text>
-                            </View>
-                        </View>
-                        <TouchableOpacity style={styles.callButton}>
-                            <Ionicons name="call" size={20} color="white" />
-                        </TouchableOpacity>
+                    <Text style={styles.sectionTitle}>Trạng thái</Text>
+                    <View style={styles.statusBadge}>
+                        <Ionicons 
+                            name={job.status === 'open' ? 'time-outline' : 'checkmark-circle'} 
+                            size={20} 
+                            color={job.status === 'open' ? '#FF9800' : '#4CAF50'} 
+                        />
+                        <Text style={[
+                            styles.statusText,
+                            { color: job.status === 'open' ? '#FF9800' : '#4CAF50' }
+                        ]}>
+                            {job.status === 'open' ? 'Đang chờ' : 'Đã xử lý'}
+                        </Text>
                     </View>
                 </View>
             </ScrollView>
@@ -143,13 +206,25 @@ export default function JobDetailScreen({ route, navigation }) {
             {/* Action Buttons */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.rejectButton} onPress={() => navigation.goBack()}>
-                    <Text style={styles.rejectText}>Từ chối</Text>
+                    <Text style={styles.rejectText}>Quay lại</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.acceptButton}
                     onPress={() => {
-                        alert('Đã nhận việc!');
-                        navigation.goBack();
+                        Alert.alert(
+                            'Xác nhận',
+                            'Bạn có chắc muốn nhận công việc này?',
+                            [
+                                { text: 'Hủy', style: 'cancel' },
+                                { 
+                                    text: 'Nhận việc', 
+                                    onPress: () => {
+                                        Alert.alert('Thành công', 'Đã nhận công việc!');
+                                        navigation.goBack();
+                                    }
+                                }
+                            ]
+                        );
                     }}
                 >
                     <Text style={styles.acceptText}>Nhận việc</Text>
@@ -369,5 +444,44 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: 'white',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#999',
+    },
+    jobPhoto: {
+        width: 120,
+        height: 120,
+        borderRadius: 12,
+        marginRight: 12,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+    },
+    statusText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
