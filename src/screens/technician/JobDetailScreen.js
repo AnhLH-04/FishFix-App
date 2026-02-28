@@ -11,6 +11,8 @@ import {
     Image,
     Linking,
     TextInput,
+    TouchableWithoutFeedback,
+    Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
@@ -272,9 +274,13 @@ export default function JobDetailScreen({ route, navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Service Info */}
-                <View style={styles.section}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <ScrollView 
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {/* Service Info */}
+                    <View style={styles.section}>
                     <View style={styles.serviceHeader}>
                         <View style={styles.serviceIcon}>
                             <Ionicons name="construct" size={32} color="#FF6B35" />
@@ -367,6 +373,7 @@ export default function JobDetailScreen({ route, navigation }) {
                     </View>
                 </View>
             </ScrollView>
+            </TouchableWithoutFeedback>
 
             {/* Bid Form */}
             <View style={styles.bidFormSection}>
@@ -381,7 +388,8 @@ export default function JobDetailScreen({ route, navigation }) {
                             keyboardType="numeric"
                             value={bidAmount}
                             onChangeText={setBidAmount}
-                            editable={!submittingBid}
+                            returnKeyType="next"
+                            onSubmitEditing={() => Keyboard.dismiss()}
                         />
                         <Text style={styles.inputSuffix}>đ</Text>
                     </View>
@@ -396,6 +404,8 @@ export default function JobDetailScreen({ route, navigation }) {
                         value={estimatedHours}
                         onChangeText={setEstimatedHours}
                         editable={!submittingBid}
+                        returnKeyType="next"
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
                 </View>
 
@@ -409,6 +419,9 @@ export default function JobDetailScreen({ route, navigation }) {
                         value={bidMessage}
                         onChangeText={setBidMessage}
                         editable={!submittingBid}
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
                 </View>
             </View>

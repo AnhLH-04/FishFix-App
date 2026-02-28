@@ -23,17 +23,23 @@ export const createBooking = async (bookingData) => {
  * Tạo payment cho booking
  * @param {string} bookingId
  * @param {Object} paymentData
+ * @param {number} paymentData.amount - Số tiền thanh toán
+ * @param {string} paymentData.paymentType - deposit | final | refund
+ * @param {string} paymentData.paymentMethod - vnpay | momo | zalopay | cash | bank_transfer
  * @returns {Promise<Object>} { paymentId }
  */
 export const createPayment = async (bookingId, paymentData) => {
     try {
+        console.log('💳 Creating payment for booking:', bookingId, paymentData);
         const response = await apiClient.post(
             `/api/bookings/${bookingId}/payments`,
             paymentData
         );
+        console.log('✅ Payment created successfully:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Create payment error:', error);
+        console.error('❌ Create payment error:', error);
+        console.error('❌ Error response:', error.response?.data);
         throw error;
     }
 };
@@ -106,6 +112,79 @@ export const getInspectionByBooking = async (bookingId) => {
     }
 };
 
+/**
+ * Cập nhật trạng thái booking (cho tracking)
+ * @param {string} bookingId
+ * @param {Object} statusData - { status, actorId?, reason?, notes?, images? }
+ * Valid status: confirmed | on_the_way | arrived | in_progress | completed | cancelled
+ * @returns {Promise<void>} Response 204 No Content
+ */
+export const updateBookingStatus = async (bookingId, statusData) => {
+    try {
+        // Không gửi bookingId trong body (đã có trong URL)
+        // Chỉ gửi fields có giá trị
+        const body = {
+            status: statusData.status,
+        };
+        
+        // Add optional fields nếu có
+        if (statusData.actorId) {
+            body.actorId = statusData.actorId;
+        }
+        if (statusData.reason) {
+            body.reason = statusData.reason;
+        }
+        if (statusData.notes) {
+            body.notes = statusData.notes;
+        }
+        if (statusData.images) {
+            body.images = statusData.images;
+        }
+        
+        // Response 204 No Content - không có body
+        await apiClient.patch(
+            `/api/bookings/${bookingId}/status`,
+            body
+        );
+        
+        // Success - không cần return gì vì 204 No Content
+        return;
+    } catch (error) {
+        console.error('Update booking status error:', error);
+        throw error;
+    }
+};
+
+/**
+ * Lấy chi tiết booking
+ * @param {string} bookingId
+ * @returns {Promise<Object>}
+ */
+export const getBookingById = async (bookingId) => {
+    try {
+        const response = await apiClient.get(`/api/bookings/${bookingId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Get booking error:', error);
+        throw error;
+    }
+};
+
+/**
+ * Lấy booking bằng bidId
+ * @param {string} bidId
+ * @returns {Promise<Object>}
+ */
+export const getBookingByBidId = async (bidId) => {
+    try {
+        const response = await apiClient.get(`/api/bookings/by-bid/${bidId}`);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Get booking by bidId error:', error);
+        throw error;
+    }
+};
+
 export default {
     createBooking,
     createPayment,
@@ -113,4 +192,7 @@ export default {
     createReview,
     createInspection,
     getInspectionByBooking,
+    updateBookingStatus,
+    getBookingById,
+    getBookingByBidId,
 };

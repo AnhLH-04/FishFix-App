@@ -25,6 +25,9 @@ import BookingTypeScreen from '../screens/customer/BookingTypeScreen';
 import NearbyTechniciansScreen from '../screens/customer/NearbyTechniciansScreen';
 import InstantBookingScreen from '../screens/customer/InstantBookingScreen';
 import InstantBookingConfirmationScreen from '../screens/customer/InstantBookingConfirmationScreen';
+import JobBidsScreen from '../screens/customer/JobBidsScreen';
+import JobTrackingScreen from '../screens/customer/JobTrackingScreen';
+import PaymentScreen from '../screens/customer/PaymentScreen';
 
 // Common Screens
 import BookingsScreen from '../screens/BookingsScreen';
@@ -100,6 +103,10 @@ function BookingsStack() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Bookings" component={BookingsScreen} />
+            {/* <Stack.Screen name="JobDetails" component={JobDetailScreen} /> */}
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
         </Stack.Navigator>
     );
 }
@@ -159,8 +166,8 @@ function CustomerTabs() {
                     backgroundColor: '#fff',
                     borderTopWidth: 1,
                     borderTopColor: '#e0e0e0',
-                    height: 60,
-                    paddingBottom: 8,
+                    height: 80,
+                    paddingBottom: 20,
                     paddingTop: 8,
                 },
                 tabBarLabelStyle: {

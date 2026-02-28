@@ -1,10 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import authService from '../services/authService';
 import locationService from '../services/locationService';
+import { setUnauthorizedCallback } from '../services/apiClient';
 
 const AuthContext = createContext({});
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children, navigation }) => {
     const [user, setUser] = useState(null);
     const [userRole, setUserRole] = useState(null); // 'customer' hoặc 'technician'
     const [loading, setLoading] = useState(true); // Loading state cho auto-login
@@ -13,6 +14,12 @@ export const AuthProvider = ({ children }) => {
     // Auto-login khi app khởi động
     useEffect(() => {
         checkAuth();
+        
+        // Set callback để handle 401 errors
+        setUnauthorizedCallback(() => {
+            console.log('🚫 Session expired - logging out');
+            handleSessionExpired();
+        });
     }, []);
 
     const checkAuth = async () => {
@@ -71,6 +78,14 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setUserRole(null);
         setUserLocation(null);
+    };
+
+    const handleSessionExpired = async () => {
+        // Clear auth state
+        await authService.logout();
+        setUser(null);
+        setUserRole(null);
+        setUserLocation(null)
     };
 
     const value = {

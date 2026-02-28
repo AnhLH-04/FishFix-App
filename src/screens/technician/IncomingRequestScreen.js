@@ -8,19 +8,64 @@ import {
     Animated,
     Modal,
     Dimensions,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import bookingService from '../../services/bookingService';
+import { updateJobStatus } from '../../services/jobService';
+import { useAuth } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function IncomingRequestScreen({ navigation, route }) {
+    const { user } = useAuth();
     const [timeLeft, setTimeLeft] = useState(30); // 30 seconds to accept
     const [pulseAnim] = useState(new Animated.Value(1));
     const [progressAnim] = useState(new Animated.Value(100));
+    const [accepting, setAccepting] = useState(false);
 
-    // Mock data - trong thực tế sẽ nhận từ API/Socket
-    const request = route?.params?.request || {
+    // Nhận booking data từ navigation params (khi customer accept bid)
+    const bookingData = route?.params?.booking;
+    const jobData = route?.params?.job;
+    
+    // Map booking data sang format request để hiển thị
+    const request = bookingData ? {
+        // Booking info
+        bookingId: bookingData.bookingId,
+        jobId: bookingData.jobId,
+        bidId: bookingData.bidId,
+        customerId: bookingData.customerId,
+        workerId: bookingData.workerId,
+        
+        // Job info
+        id: jobData?.jobId || bookingData.jobId,
+        customer: jobData?.customerName || 'Khách hàng',
+        service: jobData?.title || jobData?.serviceName || 'Dịch vụ sửa chữa',
+        address: jobData?.address || 'Địa chỉ chưa cập nhật',
+        description: jobData?.description || 'Không có mô tả',
+        
+        // Booking details
+        scheduledDate: bookingData.scheduledDate,
+        scheduledTimeStart: bookingData.scheduledTimeStart,
+        scheduledTimeEnd: bookingData.scheduledTimeEnd,
+        price: bookingData.finalAmount,
+        depositAmount: bookingData.depositAmount,
+        
+        // Additional info
+        distance: '2.5 km', // Có thể tính từ GPS
+        estimatedTime: '10 phút',
+        phone: jobData?.customerPhone || '0123456789',
+        rating: 4.8,
+        urgent: jobData?.urgency === 'high' || jobData?.urgency === 'emergency',
+        
+        // Location
+        coordinates: {
+            latitude: jobData?.latitude || 10.7629,
+            longitude: jobData?.longitude || 106.6822,
+        },
+    } : route?.params?.request || {
+        // Fallback mock data
         id: 1,
         customer: 'Nguyễn Văn A',
         service: 'Sửa máy lạnh',
@@ -77,10 +122,65 @@ export default function IncomingRequestScreen({ navigation, route }) {
         };
     }, []);
 
-    const handleAccept = () => {
-        // Gửi accept request đến server
-        console.log('Accepted request:', request.id);
-        navigation.replace('ActiveJob', { job: request });
+    const handleAccept = async () => {
+        if (accepting) return;
+
+        try {
+            setAccepting(true);
+            console.log('✅ Technician accepted booking:', request.bookingId || request.id);
+            
+            // Cập nhật status booking sang 'confirmed' qua API
+            if (request.bookingId) {
+                const statusData = {
+                    status: 'confirmed',
+                };
+                
+                // Add actorId if available (optional cho confirmed)
+                if (user?.userId || user?.uid) {
+                    statusData.actorId = user.userId || user.uid;
+                }
+                
+                await bookingService.updateBookingStatus(request.bookingId, statusData);
+                
+                // Update job status to 'assigned'
+                console.log('🔄 Updating job status to assigned...');
+                console.log('📋 Job ID:', request.jobId);
+                try {
+                    await updateJobStatus(request.jobId, 'completed');
+                    console.log('✅ Job status updated to completed');
+                } catch (jobError) {
+                    console.error('❌ Failed to update job status:', jobError);
+                    console.error('❌ Error details:', jobError.response?.data);
+                    // Continue even if job update fails
+                }
+                
+                Alert.alert('Thành công', 'Đã xác nhận công việc!', [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            // Navigate to ActiveJob với full booking info
+                            navigation.replace('ActiveJob', { 
+                                job: request,
+                                bookingId: request.bookingId,
+                                isFromBooking: true,
+                            });
+                        }
+                    }
+                ]);
+            } else {
+                // Fallback nếu không có bookingId
+                navigation.replace('ActiveJob', { 
+                    job: request,
+                    bookingId: request.bookingId,
+                    isFromBooking: true,
+                });
+            }
+        } catch (error) {
+            console.error('Error accepting booking:', error);
+            Alert.alert('Lỗi', 'Không thể xác nhận công việc. Vui lòng thử lại.');
+        } finally {
+            setAccepting(false);
+        }
     };
 
     const handleReject = () => {
@@ -157,12 +257,21 @@ export default function IncomingRequestScreen({ navigation, route }) {
                                 <Text style={styles.infoLabel}>Khoảng cách</Text>
                                 <Text style={styles.infoValue}>{request.distance}</Text>
                             </View>
+
                             <View style={styles.divider} />
+
                             <View style={styles.infoItem}>
                                 <Ionicons name="time" size={18} color="#FF9800" />
                                 <Text style={styles.infoLabel}>Thời gian đến</Text>
                                 <Text style={styles.infoValue}>{request.estimatedTime}</Text>
+
+                                {request.depositAmount && (
+                                    <Text style={styles.depositText}>
+                                        (Đặt cọc: {request.depositAmount.toLocaleString('vi-VN')}₫)
+                                    </Text>
+                                )}
                             </View>
+                        </View>
                         </View>
 
                         <View style={styles.descriptionBox}>
@@ -177,7 +286,7 @@ export default function IncomingRequestScreen({ navigation, route }) {
                             </Text>
                         </View>
                     </View>
-                </View>
+                {/* </View> */}
 
                 {/* Action Buttons */}
                 <View style={styles.actionsContainer}>
@@ -372,6 +481,33 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#333',
         lineHeight: 20,
+    },
+    depositText: {
+        fontSize: 13,
+        color: '#666',
+        marginTop: 5,
+    },
+    scheduleBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: '#E3F2FD',
+        padding: 12,
+        borderRadius: 10,
+        marginTop: 10,
+    },
+    scheduleInfo: {
+        flex: 1,
+    },
+    scheduleLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 2,
+    },
+    scheduleValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2196F3',
     },
     priceSection: {
         flexDirection: 'row',

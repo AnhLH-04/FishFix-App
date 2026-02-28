@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import { createJob } from '../../services/jobService';
 import { uploadMultipleImages } from '../../services/uploadService';
+import GooglePlacesAutocomplete from '../../components/GooglePlacesAutocomplete';
 
 const CreateJobScreen = ({ route, navigation }) => {
     const authContext = useAuth();
@@ -28,6 +29,8 @@ const CreateJobScreen = ({ route, navigation }) => {
     const [ward, setWard] = useState('');
     const [district, setDistrict] = useState('');
     const [city, setCity] = useState('TP. Hồ Chí Minh');
+    const [latitude, setLatitude] = useState(null);
+    const [longitude, setLongitude] = useState(null);
     const [estimatedBudget, setEstimatedBudget] = useState('');
     const [urgency, setUrgency] = useState('medium'); // low, medium, high, emergency
     const [images, setImages] = useState([]);
@@ -87,6 +90,17 @@ const CreateJobScreen = ({ route, navigation }) => {
         setImages(images.filter((_, i) => i !== index));
     };
 
+    const handlePlaceSelected = (place) => {
+        console.log('📍 Place selected:', place);
+        
+        setAddress(place.address);
+        setWard(place.ward);
+        setDistrict(place.district);
+        setCity(place.city);
+        setLatitude(place.latitude);
+        setLongitude(place.longitude);
+    };
+
     const handleCreateJob = async () => {
         // Validation
         if (!description.trim()) {
@@ -122,8 +136,8 @@ const CreateJobScreen = ({ route, navigation }) => {
                 ward: ward.trim() || 'Phường 1',
                 district: district.trim() || 'Quận 1',
                 city: city.trim(),
-                latitude: userLocation?.latitude || 10.7285, // Lấy từ GPS nếu có
-                longitude: userLocation?.longitude || 106.7214, // Fallback TP.HCM
+                latitude: latitude || userLocation?.latitude || 10.7285, // Use from Google Places or GPS
+                longitude: longitude || userLocation?.longitude || 106.7214, // Fallback TP.HCM
                 urgency: urgency,
                 estimatedBudget: estimatedBudget ? parseFloat(estimatedBudget) : 500000,
                 preferredDate: now.toISOString().split('T')[0], // YYYY-MM-DD (hôm nay)
@@ -132,7 +146,7 @@ const CreateJobScreen = ({ route, navigation }) => {
             };
 
             console.log('📍 Creating job with location:', {
-                source: userLocation ? 'GPS' : 'Default (HCM)',
+                source: latitude && longitude ? 'Google Places' : (userLocation ? 'GPS' : 'Default (HCM)'),
                 latitude: jobData.latitude,
                 longitude: jobData.longitude,
                 address: jobData.address,
@@ -300,7 +314,7 @@ const CreateJobScreen = ({ route, navigation }) => {
                     </ScrollView>
                 </View>
 
-                {/* Address */}
+                {/* Address with Google Places Autocomplete */}
                 <View style={styles.section}>
                     <View style={styles.labelRow}>
                         <Text style={styles.label}>Địa chỉ *</Text>
@@ -321,32 +335,39 @@ const CreateJobScreen = ({ route, navigation }) => {
                             </TouchableOpacity>
                         )}
                     </View>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Số nhà, tên đường..."
-                        value={address}
-                        onChangeText={setAddress}
+                    
+                    {/* Google Places Autocomplete */}
+                    <GooglePlacesAutocomplete
+                        placeholder="Nhập địa chỉ hoặc tìm kiếm..."
+                        onPlaceSelected={handlePlaceSelected}
+                        initialValue={address}
                     />
-                    <View style={styles.addressRow}>
-                        <TextInput
-                            style={[styles.input, { flex: 1, marginRight: 8 }]}
-                            placeholder="Phường/Xã"
-                            value={ward}
-                            onChangeText={setWard}
-                        />
-                        <TextInput
-                            style={[styles.input, { flex: 1 }]}
-                            placeholder="Quận/Huyện"
-                            value={district}
-                            onChangeText={setDistrict}
-                        />
-                    </View>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Thành phố"
-                        value={city}
-                        onChangeText={setCity}
-                    />
+                    
+                    {/* Display selected address details */}
+                    {address && (
+                        <View style={styles.addressDetails}>
+                            <View style={styles.addressDetailRow}>
+                                <Ionicons name="location" size={16} color="#4CAF50" />
+                                <Text style={styles.addressDetailText}>{address}</Text>
+                            </View>
+                            {(ward || district || city) && (
+                                <View style={styles.addressDetailRow}>
+                                    <Ionicons name="home" size={16} color="#666" />
+                                    <Text style={styles.addressDetailText}>
+                                        {[ward, district, city].filter(Boolean).join(', ')}
+                                    </Text>
+                                </View>
+                            )}
+                            {latitude && longitude && (
+                                <View style={styles.addressDetailRow}>
+                                    <Ionicons name="navigate" size={16} color="#2196F3" />
+                                    <Text style={styles.addressDetailText}>
+                                        Lat: {latitude.toFixed(6)}, Lng: {longitude.toFixed(6)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </View>
 
                 {/* Budget */}
@@ -480,6 +501,23 @@ const styles = StyleSheet.create({
     },
     addressRow: {
         flexDirection: 'row',
+    },
+    addressDetails: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 10,
+        gap: 8,
+    },
+    addressDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    addressDetailText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#666',
     },
     photoContainer: {
         flexDirection: 'row',

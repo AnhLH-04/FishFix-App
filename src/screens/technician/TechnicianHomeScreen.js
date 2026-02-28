@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,10 +7,14 @@ import {
     TouchableOpacity,
     SafeAreaView,
     StatusBar,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
+import apiClient from '../../services/apiClient';
+import workerService from '../../services/workerService';
 
 export default function TechnicianHomeScreen({ navigation }) {
     const { user, logout } = useAuth();
@@ -18,6 +22,98 @@ export default function TechnicianHomeScreen({ navigation }) {
     const [completedToday, setCompletedToday] = useState(5);
     const [todayEarnings, setTodayEarnings] = useState(850000);
     const [isOnline, setIsOnline] = useState(false);
+    const [bookings, setBookings] = useState([]);
+    const [loadingBookings, setLoadingBookings] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [workerId, setWorkerId] = useState(null);
+
+    useEffect(() => {
+        if (user?.id) {
+            initializeWorker();
+        }
+    }, [user?.id]);
+
+    useEffect(() => {
+        if (workerId) {
+            fetchWorkerBookings();
+            // Auto refresh every 30 seconds
+            const interval = setInterval(() => {
+                fetchWorkerBookings(true);
+            }, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [workerId]);
+
+    const initializeWorker = async () => {
+        try {
+            console.log('👤 Getting workerId for userId:', user?.id);
+            const workerProfile = await workerService.getWorkerByUserId(user.id);
+            
+            if (workerProfile && workerProfile.workerId) {
+                setWorkerId(workerProfile.workerId);
+                console.log('✅ Found workerId:', workerProfile.workerId);
+            } else {
+                console.warn('⚠️ No worker profile found for user');
+            }
+        } catch (error) {
+            console.error('❌ Error getting workerId:', error);
+        }
+    };
+
+    const fetchWorkerBookings = async (silent = false) => {
+        try {
+            if (!silent) setLoadingBookings(true);
+            
+            if (!workerId) {
+                console.warn('⚠️ No workerId available yet');
+                return;
+            }
+            
+            console.log('📋 Fetching bookings for workerId:', workerId);
+            
+            // Get bookings where workerId = current worker
+            const response = await apiClient.get('/api/bookings', {
+                params: { workerId: workerId }
+            });
+            
+            const allBookings = response.data || [];
+            
+            // Filter for active bookings (pending, confirmed, in_progress)
+            const activeBookings = allBookings.filter(b => 
+                b.status === 'pending' || 
+                b.status === 'confirmed' || 
+                b.status === 'in_progress'
+            );
+
+            const completedTodayCount = allBookings.filter(b => 
+                b.status === 'completed'
+            );
+
+            const todayEarningCount = allBookings.reduce((sum, b) => {
+                if (b.status === 'completed') {
+                    return sum + (b.finalAmount || 0);
+                }
+                return sum;
+            }, 0);
+
+            setBookings(activeBookings);
+            setActiveJobs(activeBookings.length);
+            setCompletedToday(completedTodayCount.length);
+            setTodayEarnings(todayEarningCount);
+            
+            console.log('✅ Found', activeBookings.length, 'active bookings');
+        } catch (error) {
+            console.error('❌ Error fetching worker bookings:', error);
+        } finally {
+            if (!silent) setLoadingBookings(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchWorkerBookings();
+    };
 
     const stats = [
         {
@@ -101,7 +197,12 @@ export default function TechnicianHomeScreen({ navigation }) {
                 </View>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
                 {/* Online/Offline Toggle - Giống Grab */}
                 <View style={styles.onlineToggleContainer}>
                     <View style={styles.toggleContent}>
@@ -193,66 +294,33 @@ export default function TechnicianHomeScreen({ navigation }) {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Công việc đang làm</Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Jobs')}>
                             <Text style={styles.seeAll}>Xem tất cả</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={styles.jobCard}>
-                        <View style={styles.jobHeader}>
-                            <View style={[styles.jobStatus, { backgroundColor: '#FF6B3520' }]}>
-                                <Text style={[styles.jobStatusText, { color: '#FF6B35' }]}>
-                                    Đang làm
-                                </Text>
-                            </View>
-                            <Text style={styles.jobTime}>14:30 - Hôm nay</Text>
+                    {loadingBookings ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color="#FF6B35" />
+                            <Text style={styles.loadingText}>Đang tải...</Text>
                         </View>
-                        <Text style={styles.jobTitle}>Sửa máy lạnh</Text>
-                        <View style={styles.jobInfo}>
-                            <Ionicons name="location-outline" size={16} color="#666" />
-                            <Text style={styles.jobInfoText}>123 Nguyễn Văn Linh, Q.7</Text>
+                    ) : bookings.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="briefcase-outline" size={48} color="#ccc" />
+                            <Text style={styles.emptyText}>Chưa có công việc nào</Text>
+                            <Text style={styles.emptySubtext}>
+                                Các booking mới sẽ xuất hiện ở đây
+                            </Text>
                         </View>
-                        <View style={styles.jobInfo}>
-                            <Ionicons name="person-outline" size={16} color="#666" />
-                            <Text style={styles.jobInfoText}>Nguyễn Văn A</Text>
-                        </View>
-                        <View style={styles.jobFooter}>
-                            <View style={styles.jobPrice}>
-                                <Text style={styles.jobPriceText}>500.000đ</Text>
-                            </View>
-                            <TouchableOpacity style={styles.jobButton}>
-                                <Text style={styles.jobButtonText}>Xem chi tiết</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.jobCard}>
-                        <View style={styles.jobHeader}>
-                            <View style={[styles.jobStatus, { backgroundColor: '#2196F320' }]}>
-                                <Text style={[styles.jobStatusText, { color: '#2196F3' }]}>
-                                    Sắp tới
-                                </Text>
-                            </View>
-                            <Text style={styles.jobTime}>16:00 - Hôm nay</Text>
-                        </View>
-                        <Text style={styles.jobTitle}>Bảo trì tủ lạnh</Text>
-                        <View style={styles.jobInfo}>
-                            <Ionicons name="location-outline" size={16} color="#666" />
-                            <Text style={styles.jobInfoText}>456 Lê Văn Việt, Q.9</Text>
-                        </View>
-                        <View style={styles.jobInfo}>
-                            <Ionicons name="person-outline" size={16} color="#666" />
-                            <Text style={styles.jobInfoText}>Trần Thị B</Text>
-                        </View>
-                        <View style={styles.jobFooter}>
-                            <View style={styles.jobPrice}>
-                                <Text style={styles.jobPriceText}>350.000đ</Text>
-                            </View>
-                            <TouchableOpacity style={styles.jobButton}>
-                                <Text style={styles.jobButtonText}>Xem chi tiết</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
+                    ) : (
+                        bookings.map((booking) => (
+                            <BookingCard 
+                                key={booking.bookingId} 
+                                booking={booking}
+                                navigation={navigation}
+                            />
+                        ))
+                    )}
                 </View>
 
                 {/* Logout Button */}
@@ -264,6 +332,78 @@ export default function TechnicianHomeScreen({ navigation }) {
         </SafeAreaView>
     );
 }
+
+// Booking Card Component
+const BookingCard = ({ booking, navigation }) => {
+    const handleViewBooking = async () => {
+        try {
+            console.log('👁️ Viewing booking:', booking.bookingId);
+            
+            // Fetch job details
+            const jobResponse = await apiClient.get(`/api/jobs/${booking.jobId}`);
+            const jobData = jobResponse.data;
+            
+            console.log('💼 Job data:', jobData);
+            
+            // Navigate to IncomingRequestScreen with booking and job data
+            navigation.navigate('IncomingRequest', {
+                booking: booking,
+                job: jobData,
+            });
+        } catch (error) {
+            console.error('❌ Error fetching job details:', error);
+        }
+    };
+
+    const getStatusInfo = (status) => {
+        switch (status) {
+            case 'pending':
+                return { text: 'Mới', color: '#FF9800', bgColor: '#FF980020' };
+            case 'confirmed':
+            case 'in_progress':
+                return { text: 'Đang làm', color: '#FF6B35', bgColor: '#FF6B3520' };
+            default:
+                return { text: 'Chờ', color: '#2196F3', bgColor: '#2196F320' };
+        }
+    };
+
+    const statusInfo = getStatusInfo(booking.status);
+    const scheduledTime = booking.scheduledTimeStart?.slice(0, 5) || '';
+    const scheduledDate = booking.scheduledDate || '';
+    const isToday = scheduledDate === new Date().toISOString().split('T')[0];
+
+    return (
+        <TouchableOpacity style={styles.jobCard} onPress={handleViewBooking}>
+            <View style={styles.jobHeader}>
+                <View style={[styles.jobStatus, { backgroundColor: statusInfo.bgColor }]}>
+                    <Text style={[styles.jobStatusText, { color: statusInfo.color }]}>
+                        {statusInfo.text}
+                    </Text>
+                </View>
+                <Text style={styles.jobTime}>
+                    {scheduledTime} - {isToday ? 'Hôm nay' : scheduledDate}
+                </Text>
+            </View>
+            <Text style={styles.jobTitle}>Booking #{booking.bookingId?.slice(0, 8)}</Text>
+            <View style={styles.jobInfo}>
+                <Ionicons name="calendar-outline" size={16} color="#666" />
+                <Text style={styles.jobInfoText}>
+                    {scheduledDate} • {scheduledTime}
+                </Text>
+            </View>
+            <View style={styles.jobFooter}>
+                <View style={styles.jobPrice}>
+                    <Text style={styles.jobPriceText}>
+                        {booking.finalAmount?.toLocaleString('vi-VN')}đ
+                    </Text>
+                </View>
+                <TouchableOpacity style={styles.jobButton} onPress={handleViewBooking}>
+                    <Text style={styles.jobButtonText}>Bắt đầu làm việc</Text>
+                </TouchableOpacity>
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -553,5 +693,31 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 12,
         color: '#2196F3',
+    },
+    loadingContainer: {
+        padding: 40,
+        alignItems: 'center',
+        gap: 12,
+    },
+    loadingText: {
+        fontSize: 14,
+        color: '#666',
+    },
+    emptyContainer: {
+        padding: 40,
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'white',
+        borderRadius: 15,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#999',
+    },
+    emptySubtext: {
+        fontSize: 13,
+        color: '#999',
+        textAlign: 'center',
     },
 });

@@ -11,11 +11,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import bookingService from '../../services/bookingService';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ActiveJobScreen({ navigation, route }) {
+    const { user } = useAuth();
     const [jobStatus, setJobStatus] = useState('going_to_customer'); // going_to_customer, arrived, working, completed
     const [timer, setTimer] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [updating, setUpdating] = useState(false);
 
     const job = route?.params?.job || {
         id: 1,
@@ -31,6 +35,9 @@ export default function ActiveJobScreen({ navigation, route }) {
             longitude: 106.7217,
         },
     };
+
+    // Get bookingId from route params
+    const bookingId = route?.params?.bookingId;
 
     useEffect(() => {
         let interval;
@@ -63,7 +70,92 @@ export default function ActiveJobScreen({ navigation, route }) {
         Linking.openURL(url);
     };
 
-    const handleArrived = () => {
+    /**
+     * Cập nhật trạng thái booking thông qua API
+     */
+    const updateStatus = async (newStatus, statusMessage, additionalData = {}) => {
+        if (!bookingId) {
+            Alert.alert('Lỗi', 'Không tìm thấy thông tin booking');
+            return false;
+        }
+
+        try {
+            setUpdating(true);
+            
+            const statusData = {
+                status: newStatus,
+            };
+            
+            // Add actorId if available
+            if (user?.userId || user?.uid) {
+                statusData.actorId = user.userId || user.uid;
+            }
+            
+            // Add notes if provided
+            if (statusMessage) {
+                statusData.notes = statusMessage;
+            }
+            
+            // Add any additional data (reason, images, etc.)
+            if (additionalData.reason) {
+                statusData.reason = additionalData.reason;
+            }
+            if (additionalData.images) {
+                statusData.images = additionalData.images;
+            }
+            
+            await bookingService.updateBookingStatus(bookingId, statusData);
+            return true;
+        } catch (error) {
+            console.error('Error updating booking status:', error);
+            Alert.alert('Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+            return false;
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleConfirmJob = async () => {
+        Alert.alert(
+            'Xác nhận công việc',
+            'Bạn có chắc muốn nhận công việc này?',
+            [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                    text: 'Xác nhận',
+                    onPress: async () => {
+                        const success = await updateStatus('confirmed');
+                        if (success) {
+                            setJobStatus('confirmed');
+                            Alert.alert('Thành công', 'Đã xác nhận công việc!');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleStartGoing = async () => {
+        Alert.alert(
+            'Bắt đầu di chuyển',
+            'Xác nhận bạn đã xuất phát đến chỗ khách hàng?',
+            [
+                { text: 'Chưa', style: 'cancel' },
+                {
+                    text: 'Đã xuất phát',
+                    onPress: async () => {
+                        // on_the_way không cần notes theo spec
+                        const success = await updateStatus('on_the_way');
+                        if (success) {
+                            setJobStatus('going_to_customer');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleArrived = async () => {
         Alert.alert(
             'Xác nhận đến nơi',
             'Bạn đã đến nơi làm việc?',
@@ -71,22 +163,66 @@ export default function ActiveJobScreen({ navigation, route }) {
                 { text: 'Chưa', style: 'cancel' },
                 {
                     text: 'Đã đến',
-                    onPress: () => {
-                        setJobStatus('arrived');
+                    onPress: async () => {
+                        // arrived không cần notes theo spec
+                        const success = await updateStatus('arrived');
+                        if (success) {
+                            setJobStatus('arrived');
+                        }
                     },
                 },
             ]
         );
     };
 
-    const handleStartWork = () => {
-        setJobStatus('working');
-        setIsTimerRunning(true);
+    const handleStartWork = async () => {
+        // in_progress không cần notes theo spec
+        const success = await updateStatus('in_progress');
+        if (success) {
+            setJobStatus('working');
+            setIsTimerRunning(true);
+        }
     };
 
-    const handleCompleteWork = () => {
+    const handleCompleteWork = async () => {
         setIsTimerRunning(false);
-        navigation.navigate('JobCompletion', { job, workDuration: timer });
+        // completed có thể có notes và images (optional)
+        const success = await updateStatus('completed', 'Công việc đã hoàn thành');
+        if (success) {
+            navigation.navigate('JobCompletion', { job, workDuration: timer, bookingId });
+        }
+    };
+
+    const handleCancelBooking = () => {
+        Alert.prompt(
+            'Hủy công việc',
+            'Vui lòng nhập lý do hủy:',
+            [
+                { text: 'Đóng', style: 'cancel' },
+                {
+                    text: 'Xác nhận hủy',
+                    onPress: async (reason) => {
+                        if (!reason || reason.trim() === '') {
+                            Alert.alert('Lỗi', 'Vui lòng nhập lý do hủy');
+                            return;
+                        }
+                        
+                        // cancelled requires actorId and reason
+                        const success = await updateStatus('cancelled', null, { reason: reason.trim() });
+                        if (success) {
+                            Alert.alert('Đã hủy', 'Công việc đã được hủy', [
+                                {
+                                    text: 'OK',
+                                    onPress: () => navigation.goBack()
+                                }
+                            ]);
+                        }
+                    },
+                    style: 'destructive',
+                },
+            ],
+            'plain-text'
+        );
     };
 
     const getStatusInfo = () => {
@@ -218,31 +354,76 @@ export default function ActiveJobScreen({ navigation, route }) {
 
             {/* Action Button */}
             <View style={styles.footer}>
+                {/* Cancel Button - hiển thị cho tất cả status trừ completed */}
+                {jobStatus !== 'completed' && (
+                    <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={handleCancelBooking}
+                        disabled={updating}
+                    >
+                        <Ionicons name="close-circle" size={20} color="#F44336" />
+                        <Text style={styles.cancelButtonText}>Hủy công việc</Text>
+                    </TouchableOpacity>
+                )}
+                
+                {jobStatus === 'pending' && (
+                    <TouchableOpacity
+                        style={[styles.mainButton, { backgroundColor: '#4CAF50' }]}
+                        onPress={handleConfirmJob}
+                        disabled={updating}
+                    >
+                        <Ionicons name="checkmark-circle" size={24} color="white" />
+                        <Text style={styles.mainButtonText}>
+                            {updating ? 'Đang xử lý...' : 'Xác nhận công việc'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+                {jobStatus === 'confirmed' && (
+                    <TouchableOpacity
+                        style={[styles.mainButton, { backgroundColor: '#2196F3' }]}
+                        onPress={handleStartGoing}
+                        disabled={updating}
+                    >
+                        <Ionicons name="navigate" size={24} color="white" />
+                        <Text style={styles.mainButtonText}>
+                            {updating ? 'Đang xử lý...' : 'Bắt đầu di chuyển'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
                 {jobStatus === 'going_to_customer' && (
                     <TouchableOpacity
                         style={[styles.mainButton, { backgroundColor: '#FF9800' }]}
                         onPress={handleArrived}
+                        disabled={updating}
                     >
                         <Ionicons name="location" size={24} color="white" />
-                        <Text style={styles.mainButtonText}>Đã đến nơi</Text>
+                        <Text style={styles.mainButtonText}>
+                            {updating ? 'Đang xử lý...' : 'Đã đến nơi'}
+                        </Text>
                     </TouchableOpacity>
                 )}
                 {jobStatus === 'arrived' && (
                     <TouchableOpacity
                         style={[styles.mainButton, { backgroundColor: '#4CAF50' }]}
                         onPress={handleStartWork}
+                        disabled={updating}
                     >
                         <Ionicons name="hammer" size={24} color="white" />
-                        <Text style={styles.mainButtonText}>Bắt đầu làm việc</Text>
+                        <Text style={styles.mainButtonText}>
+                            {updating ? 'Đang xử lý...' : 'Bắt đầu làm việc'}
+                        </Text>
                     </TouchableOpacity>
                 )}
                 {jobStatus === 'working' && (
                     <TouchableOpacity
                         style={[styles.mainButton, { backgroundColor: '#2196F3' }]}
                         onPress={handleCompleteWork}
+                        disabled={updating}
                     >
                         <Ionicons name="checkmark-circle" size={24} color="white" />
-                        <Text style={styles.mainButtonText}>Hoàn thành công việc</Text>
+                        <Text style={styles.mainButtonText}>
+                            {updating ? 'Đang xử lý...' : 'Hoàn thành công việc'}
+                        </Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -446,6 +627,23 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderTopWidth: 1,
         borderTopColor: '#E0E0E0',
+    },
+    cancelButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 8,
+        gap: 6,
+        backgroundColor: 'white',
+        borderWidth: 1,
+        borderColor: '#F44336',
+        marginBottom: 10,
+    },
+    cancelButtonText: {
+        color: '#F44336',
+        fontSize: 15,
+        fontWeight: '600',
     },
     mainButton: {
         flexDirection: 'row',

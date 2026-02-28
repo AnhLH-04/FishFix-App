@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Base URL của backend
 const API_BASE_URL = 'https://fishfix-backend.onrender.com';
 
+// Callback function để handle logout (sẽ được set từ AuthContext)
+let onUnauthorized = null;
+
+const setUnauthorizedCallback = (callback) => {
+    onUnauthorized = callback;
+};
+
 // Tạo axios instance
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -48,7 +55,15 @@ apiClient.interceptors.response.use(
             
             // Xử lý 401 - Token hết hạn hoặc không hợp lệ
             if (status === 401) {
+                console.error('🚫 Unauthorized - Clearing token and logging out');
                 await AsyncStorage.removeItem('auth_token');
+                await AsyncStorage.removeItem('user_data');
+                
+                // Call logout callback nếu có
+                if (onUnauthorized) {
+                    onUnauthorized();
+                }
+                
                 return Promise.reject({ 
                     message: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
                     status: 401
@@ -106,4 +121,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-export { API_BASE_URL };
+export { API_BASE_URL, setUnauthorizedCallback };

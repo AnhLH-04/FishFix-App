@@ -1,10 +1,16 @@
 import apiClient from './apiClient';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCNq3eqK9-9uvzOY0CXtsHnx0oH2eOPdqU';
+/**
+ * Location Services using FREE APIs:
+ * - Nominatim (OpenStreetMap) for geocoding
+ * - OSRM (Open Source Routing Machine) for routing
+ * No API key or billing account required!
+ */
 
 const googleMapsService = {
     /**
      * Lấy directions (route) từ điểm A đến B
+     * Sử dụng OSRM (Free, no API key needed)
      * @param {number} originLat 
      * @param {number} originLng 
      * @param {number} destLat 
@@ -13,40 +19,39 @@ const googleMapsService = {
      */
     getDirections: async (originLat, originLng, destLat, destLng) => {
         try {
-            const origin = `${originLat},${originLng}`;
-            const destination = `${destLat},${destLng}`;
+            // Use OSRM for routing (free!)
+            const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
             
-            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&key=${GOOGLE_MAPS_API_KEY}&mode=driving`;
+            console.log('🗺️ Calling OSRM API:', { origin: `${originLat},${originLng}`, destination: `${destLat},${destLng}` });
             
-            console.log('🗺️ Calling Directions API:', { origin, destination });
-            
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'FishFixApp/1.0',
+                },
+            });
             const data = await response.json();
             
-            console.log('📍 Directions API status:', data.status);
-            
-            if (data.status === 'REQUEST_DENIED') {
-                console.error('❌ API Key error:', data.error_message);
-                throw new Error(data.error_message || 'Directions API not enabled');
-            }
-            
-            if (data.status === 'OK' && data.routes.length > 0) {
+            if (data.code === 'Ok' && data.routes.length > 0) {
                 const route = data.routes[0];
                 const leg = route.legs[0];
                 
-                console.log('✅ Route found:', leg.distance.text, leg.duration.text);
+                // Convert meters to km, seconds to minutes
+                const distanceKm = (route.distance / 1000).toFixed(1);
+                const durationMin = Math.round(route.duration / 60);
+                
+                console.log('✅ Route found:', `${distanceKm} km`, `${durationMin} phút`);
                 
                 return {
-                    distance: leg.distance.text,
-                    distanceValue: leg.distance.value, // meters
-                    duration: leg.duration.text,
-                    durationValue: leg.duration.value, // seconds
-                    polyline: route.overview_polyline.points,
-                    steps: leg.steps,
+                    distance: `${distanceKm} km`,
+                    distanceValue: Math.round(route.distance), // meters
+                    duration: `${durationMin} phút`,
+                    durationValue: Math.round(route.duration), // seconds
+                    polyline: route.geometry, // encoded polyline
+                    steps: leg.steps || [],
                 };
             }
             
-            throw new Error(`No routes found (${data.status})`);
+            throw new Error(`No routes found (${data.code})`);
         } catch (error) {
             console.error('Error getting directions:', error);
             throw error;
@@ -102,27 +107,183 @@ const googleMapsService = {
 
     /**
      * Tính distance matrix giữa nhiều origins và destinations
+     * Sử dụng OSRM Table service (Free)
      * @param {Array<{lat, lng}>} origins 
      * @param {Array<{lat, lng}>} destinations 
      * @returns {Promise<Object>}
      */
     getDistanceMatrix: async (origins, destinations) => {
         try {
-            const originsStr = origins.map(o => `${o.lat},${o.lng}`).join('|');
-            const destinationsStr = destinations.map(d => `${d.lat},${d.lng}`).join('|');
+            // OSRM Table service combines sources and destinations
+            const coordinates = [...origins, ...destinations]
+                .map(coord => `${coord.lng},${coord.lat}`)
+                .join(';');
             
-            const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originsStr}&destinations=${destinationsStr}&key=${GOOGLE_MAPS_API_KEY}&mode=driving`;
+            const sourcesIdx = origins.map((_, i) => i).join(';');
+            const destinationsIdx = destinations.map((_, i) => i + origins.length).join(';');
             
-            const response = await fetch(url);
+            const url = `https://router.project-osrm.org/table/v1/driving/${coordinates}?sources=${sourcesIdx}&destinations=${destinationsIdx}`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'FishFixApp/1.0',
+                },
+            });
             const data = await response.json();
             
-            if (data.status === 'OK') {
-                return data;
+            if (data.code === 'Ok') {
+                return {
+                    status: 'OK',
+                    rows: data.durations.map((row, i) => ({
+                        elements: row.map((duration, j) => ({
+                            distance: {
+                                value: data.distances[i][j],
+                                text: `${(data.distances[i][j] / 1000).toFixed(1)} km`,
+                            },
+                            duration: {
+                                value: Math.round(duration),
+                                text: `${Math.round(duration / 60)} phút`,
+                            },
+                            status: 'OK',
+                        })),
+                    })),
+                };
             }
             
             throw new Error('Distance matrix request failed');
         } catch (error) {
             console.error('Error getting distance matrix:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Search places using Nominatim (Free, no API key!)
+     * @param {string} input - Search query
+     * @param {string} country - Country code (default: 'vn')
+     * @returns {Promise<Array>} List of predictions
+     */
+    searchPlaces: async (input, country = 'vn') => {
+        try {
+            if (!input || input.length < 3) {
+                return [];
+            }
+
+            const url = `https://nominatim.openstreetmap.org/search?` + 
+                `q=${encodeURIComponent(input)}&` +
+                `countrycodes=${country}&` +
+                `format=json&` +
+                `addressdetails=1&` +
+                `limit=5&` +
+                `accept-language=vi`;
+
+            console.log('🔍 Searching places:', input);
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'FishFixApp/1.0',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const predictions = data.map(place => ({
+                    place_id: place.place_id,
+                    description: place.display_name,
+                    structured_formatting: {
+                        main_text: place.name || place.display_name.split(',')[0],
+                        secondary_text: place.display_name.split(',').slice(1).join(',').trim(),
+                    },
+                    lat: parseFloat(place.lat),
+                    lon: parseFloat(place.lon),
+                    address: place.address,
+                }));
+                
+                console.log('✅ Found', predictions.length, 'predictions');
+                return predictions;
+            }
+            
+            return [];
+        } catch (error) {
+            console.error('Error searching places:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get place details from Nominatim
+     * Since Nominatim returns all data in search, this is simplified
+     * @param {Object} prediction - Prediction object from searchPlaces
+     * @returns {Promise<Object>} Place details with coordinates and address components
+     */
+    getPlaceDetails: async (prediction) => {
+        try {
+            console.log('📍 Processing place details:', prediction.description);
+
+            const address = prediction.address || {};
+            
+            const placeData = {
+                address: prediction.description,
+                street: address.road || address.street || prediction.structured_formatting.main_text,
+                ward: address.suburb || address.neighbourhood || '',
+                district: address.city_district || address.county || '',
+                city: address.city || address.state || 'TP. Hồ Chí Minh',
+                latitude: prediction.lat,
+                longitude: prediction.lon,
+                placeId: prediction.place_id?.toString() || '',
+            };
+
+            console.log('✅ Place details:', placeData);
+            return placeData;
+        } catch (error) {
+            console.error('Error getting place details:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Reverse geocoding - Get address from lat/lng
+     * Sử dụng Nominatim (Free!)
+     * @param {number} latitude 
+     * @param {number} longitude 
+     * @returns {Promise<Object>} Address information
+     */
+    reverseGeocode: async (latitude, longitude) => {
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?` +
+                `format=json&` +
+                `lat=${latitude}&` +
+                `lon=${longitude}&` +
+                `addressdetails=1&` +
+                `accept-language=vi`;
+
+            console.log('🔄 Reverse geocoding:', { latitude, longitude });
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'FishFixApp/1.0',
+                },
+            });
+            const data = await response.json();
+
+            if (data && data.address) {
+                const address = data.address;
+
+                return {
+                    address: data.display_name,
+                    street: address.road || address.street || '',
+                    ward: address.suburb || address.neighbourhood || '',
+                    district: address.city_district || address.county || '',
+                    city: address.city || address.state || 'TP. Hồ Chí Minh',
+                    latitude: latitude,
+                    longitude: longitude,
+                };
+            } else {
+                throw new Error('No results found');
+            }
+        } catch (error) {
+            console.error('Error reverse geocoding:', error);
             throw error;
         }
     },

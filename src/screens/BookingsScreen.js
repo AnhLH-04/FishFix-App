@@ -113,7 +113,7 @@ const BookingsScreen = ({ navigation }) => {
         <TouchableOpacity 
             key={job.jobId} 
             style={styles.bookingCard}
-            onPress={() => navigation.navigate('JobDetail', { jobId: job.jobId })}
+            onPress={() => navigation.navigate('JobBids', { jobId: job.jobId })}
         >
             <View style={styles.bookingHeader}>
                 <View style={styles.jobInfo}>
@@ -163,7 +163,10 @@ const BookingsScreen = ({ navigation }) => {
                 {(job.status === 'open' || job.status === 'bidding') && (
                     <TouchableOpacity 
                         style={[styles.actionBtnPrimary, { flex: 1 }]}
-                        onPress={() => navigation.navigate('JobDetail', { jobId: job.jobId })}
+                        onPress={() => navigation.navigate('JobBids', { 
+                            jobId: job.jobId,
+                            jobTitle: job.title 
+                        })}
                     >
                         <Ionicons name="eye-outline" size={18} color="#fff" />
                         <Text style={styles.actionBtnPrimaryText}>Xem báo giá</Text>
@@ -344,7 +347,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#909090ff',
-        whiteSpace: 'nowrap',
+        // whiteSpace: 'nowrap',
     },
     activeTabText: {
         color: '#000000ff',

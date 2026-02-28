@@ -98,6 +98,35 @@ export const getAvailableJobs = async (params = {}) => {
     }
 };
 
+/**
+ * Cập nhật status của job
+ * @param {string} jobId
+ * @param {string} status - open | assigned | completed | cancelled
+ * @returns {Promise<void>}
+ */
+export const updateJobStatus = async (jobId, status) => {
+    try {
+        console.log('🔄 Updating job status:', jobId, 'to', status);
+        console.log('📡 API URL:', `/api/jobs/${jobId}/status`);
+        console.log('📦 Payload:', { status });
+        
+        const response = await apiClient.patch(`/api/jobs/${jobId}/status`, { status });
+        
+        console.log('✅ Job status updated successfully');
+        console.log('✅ Response:', response);
+        console.log('✅ Response data:', response.data);
+        console.log('✅ Response status:', response.status);
+        
+        return response.data;
+    } catch (error) {
+        console.error('❌ Update job status error:', error);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error response:', error.response?.data);
+        console.error('❌ Error status:', error.response?.status);
+        throw error;
+    }
+};
+
 export default {
     createJob,
     getJobById,
@@ -105,4 +134,5 @@ export default {
     getBidsForJob,
     acceptBid,
     getAvailableJobs,
+    updateJobStatus,
 };
