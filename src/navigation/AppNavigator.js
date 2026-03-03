@@ -28,6 +28,7 @@ import InstantBookingConfirmationScreen from '../screens/customer/InstantBooking
 import JobBidsScreen from '../screens/customer/JobBidsScreen';
 import JobTrackingScreen from '../screens/customer/JobTrackingScreen';
 import PaymentScreen from '../screens/customer/PaymentScreen';
+import BookingHistoryScreen from '../screens/customer/BookingHistoryScreen';
 
 // Common Screens
 import BookingsScreen from '../screens/BookingsScreen';
@@ -94,6 +95,9 @@ function HomeStack() {
             <Stack.Screen name="Booking" component={BookingScreen} />
             <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
             <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
         </Stack.Navigator>
     );
 }
@@ -125,6 +129,7 @@ function ProfileStack() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
