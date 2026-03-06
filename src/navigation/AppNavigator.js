@@ -28,6 +28,8 @@ import InstantBookingConfirmationScreen from '../screens/customer/InstantBooking
 import JobBidsScreen from '../screens/customer/JobBidsScreen';
 import JobTrackingScreen from '../screens/customer/JobTrackingScreen';
 import PaymentScreen from '../screens/customer/PaymentScreen';
+import PaymentResultScreen from '../screens/customer/PaymentResultScreen';
+import SepayQRScreen from '../screens/customer/SepayQRScreen';
 import BookingHistoryScreen from '../screens/customer/BookingHistoryScreen';
 
 // Common Screens
@@ -98,6 +100,9 @@ function HomeStack() {
             <Stack.Screen name="JobBids" component={JobBidsScreen} />
             <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
             <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -111,6 +116,9 @@ function BookingsStack() {
             <Stack.Screen name="JobBids" component={JobBidsScreen} />
             <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
             <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }

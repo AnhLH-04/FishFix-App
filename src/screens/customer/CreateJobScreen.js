@@ -91,7 +91,6 @@ const CreateJobScreen = ({ route, navigation }) => {
     };
 
     const handlePlaceSelected = (place) => {
-        console.log('📍 Place selected:', place);
         
         setAddress(place.address);
         setWard(place.ward);
@@ -145,16 +144,6 @@ const CreateJobScreen = ({ route, navigation }) => {
                 preferredTimeEnd: "18:00:00",
             };
 
-            console.log('📍 Creating job with location:', {
-                source: latitude && longitude ? 'Google Places' : (userLocation ? 'GPS' : 'Default (HCM)'),
-                latitude: jobData.latitude,
-                longitude: jobData.longitude,
-                address: jobData.address,
-            });
-
-            console.log('Sending job data:', jobData);
-
-            // Gọi API tạo job
             const response = await createJob(jobData);
             
             Alert.alert(
@@ -164,10 +153,9 @@ const CreateJobScreen = ({ route, navigation }) => {
                     {
                         text: 'OK',
                         onPress: () => {
-                            // Navigate đến màn hình xem job hoặc danh sách thợ
-                            navigation.navigate('TechnicianList', {
+                            // Navigate đến màn hình xem báo giá của job
+                            navigation.navigate('JobBids', {
                                 jobId: response.jobId,
-                                categoryName: categoryName,
                             });
                         },
                     },

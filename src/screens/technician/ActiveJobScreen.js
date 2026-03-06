@@ -186,11 +186,14 @@ export default function ActiveJobScreen({ navigation, route }) {
 
     const handleCompleteWork = async () => {
         setIsTimerRunning(false);
-        // completed có thể có notes và images (optional)
-        const success = await updateStatus('completed', 'Công việc đã hoàn thành');
-        if (success) {
-            navigation.navigate('JobCompletion', { job, workDuration: timer, bookingId });
-        }
+        // Status sẽ được đổi sau khi customer thanh toán thành công
+        navigation.navigate('JobCompletion', { 
+            job, 
+            workDuration: timer, 
+            bookingId,
+            // Pass current status to show it's still in_progress
+            currentStatus: 'in_progress'
+        });
     };
 
     const handleCancelBooking = () => {

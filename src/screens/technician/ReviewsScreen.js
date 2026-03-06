@@ -56,8 +56,8 @@ export default function ReviewsScreen({ navigation }) {
                     reviewService.getWorkerRatingSummary(user.workerId)
                 ]);
                 
-                console.log('📋 Fetched reviews:', reviewsData);
-                console.log('📊 Rating summary:', ratingSummary);
+                console.log('Fetched reviews:', reviewsData);
+                console.log('Rating summary:', ratingSummary);
                 
                 setReviews(reviewsData || []);
                 
@@ -317,7 +317,7 @@ export default function ReviewsScreen({ navigation }) {
                             {/* Stats Card */}
                             <View style={styles.statsCard}>
                                 <View style={styles.averageSection}>
-                                    <Text style={styles.averageScore}>{stats.average}</Text>
+                                    <Text style={styles.averageScore}>{stats.average ? stats.average.toFixed(1) : '0.0'}</Text>
                                     <View style={styles.starsContainer}>
                                         {[1, 2, 3, 4, 5].map((star) => (
                                             <Ionicons

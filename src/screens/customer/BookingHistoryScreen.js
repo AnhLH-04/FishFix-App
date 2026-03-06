@@ -44,11 +44,10 @@ const BookingHistoryScreen = ({ navigation }) => {
             if (user?.id) {
                 // Lấy tất cả bookings của customer
                 const data = await getBookings({ customerId: user.id });
-                console.log('📋 Booking History Data (first item):', JSON.stringify(data[0], null, 2));
                 
                 // Lọc chỉ những booking đã hoàn thành
                 const completedBookings = data.filter(
-                    booking => booking.status === 'completed'
+                    booking => booking.status === 'completed' || booking.status === 'confirmed' || booking.status === 'paid'
                 );
                 
                 console.log('✅ Completed Bookings count:', completedBookings.length);

@@ -12,13 +12,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../../services/apiClient';
+import paymentService from '../../services/paymentService';
+import * as WebBrowser from 'expo-web-browser';
+import colors from '../../utils/colors';
 
 export default function PaymentScreen({ route, navigation }) {
     const { bookingId } = route.params;
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
     const [paymentLoading, setPaymentLoading] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [paymentMethod, setPaymentMethod] = useState('SEPAY'); // Changed to SEPAY as default
 
     useEffect(() => {
         fetchBookingDetails();
@@ -28,6 +31,55 @@ export default function PaymentScreen({ route, navigation }) {
         try {
             const response = await apiClient.get(`/api/bookings/${bookingId}`);
             setBooking(response.data);
+            
+            // // Check if booking already has successful payment
+            // try {
+            //     const latestPayment = await paymentService.getLatestPayment(bookingId);
+            //     if (latestPayment && latestPayment.status === 'SUCCEEDED') {
+            //         console.log('⚠️ Booking already has successful payment:', latestPayment);
+            //         Alert.alert(
+            //             'Đã thanh toán',
+            //             'Booking này đã được thanh toán thành công rồi.',
+            //             [
+            //                 {
+            //                     text: 'Về danh sách booking',
+            //                     onPress: () => navigation.goBack()
+            //                 }
+            //             ]
+            //         );
+            //     }
+            // } catch (paymentError) {
+            //     // 404 means no payment exists yet
+            //     if (paymentError.status === 404) {
+            //         console.log('ℹ️ No payment record found for this booking');
+                    
+            //         // If booking is in_progress with finalAmount, it's ready for payment
+            //         if (response.data.status === 'in_progress' && response.data.finalAmount) {
+            //             console.log('✅ Booking ready for payment - finalAmount:', response.data.finalAmount);
+            //             // No alert needed, customer can proceed to pay
+            //         }
+            //         // If booking is completed but no payment, show warning
+            //         else if (response.data.status === 'completed') {
+            //             Alert.alert(
+            //                 'Cảnh báo',
+            //                 'Booking này đã hoàn thành nhưng chưa có thông tin thanh toán. Có thể đã thanh toán bằng tiền mặt hoặc phương thức khác.\n\nBạn có muốn tiếp tục thanh toán online không?',
+            //                 [
+            //                     {
+            //                         text: 'Hủy',
+            //                         style: 'cancel',
+            //                         onPress: () => navigation.goBack()
+            //                     },
+            //                     {
+            //                         text: 'Tiếp tục',
+            //                         style: 'default'
+            //                     }
+            //                 ]
+            //             );
+            //         }
+            //     } else {
+            //         console.error('Error checking payment status:', paymentError);
+            //     }
+            // }
         } catch (error) {
             console.error('Error fetching booking:', error);
             Alert.alert('Lỗi', 'Không thể tải thông tin đơn hàng');
@@ -40,42 +92,144 @@ export default function PaymentScreen({ route, navigation }) {
         try {
             setPaymentLoading(true);
 
-            // Theo API spec và database schema:
-            // - payment_type: deposit, final, refund
-            // - payment_method: vnpay, momo, zalopay, cash, bank_transfer
-            const paymentData = {
-                amount: booking.finalAmount,
-                paymentType: 'final', // final payment (thanh toán cuối)
-                paymentMethod: paymentMethod, // cash, vnpay, momo, etc.
-            };
+            // Log booking state for debugging
+            console.log('📋 Booking details:', {
+                bookingId,
+                status: booking?.status,
+                finalAmount: booking?.finalAmount,
+                estimatedCost: booking?.estimatedCost,
+                paymentStatus: booking?.paymentStatus
+            });
 
-            console.log('💳 Creating payment:', paymentData);
+            // Validate booking status
+            if (booking?.status === 'completed' && booking?.paymentStatus === 'paid') {
+                Alert.alert(
+                    'Đã thanh toán',
+                    'Booking này đã được thanh toán rồi.'
+                );
+                setPaymentLoading(false);
+                return;
+            }
 
-            const response = await apiClient.post(
-                `/api/bookings/${bookingId}/payments`,
-                paymentData
-            );
+            // Check if booking is in valid state for payment
+            // Allow payment for: confirmed, in_progress, assigned
+            const validStatuses = ['confirmed', 'in_progress', 'assigned'];
+            if (booking?.status && !validStatuses.includes(booking.status.toLowerCase())) {
+                Alert.alert(
+                    'Không thể thanh toán',
+                    `Booking đang ở trạng thái "${booking.status}".\n\n` +
+                    `Chỉ có thể thanh toán khi booking đang được xử lý.`
+                );
+                setPaymentLoading(false);
+                return;
+            }
 
-            console.log('✅ Payment created:', response.data);
+            // Check if finalAmount exists
+            if (!booking?.finalAmount || booking.finalAmount <= 0) {
+                Alert.alert(
+                    'Chưa có thông tin thanh toán',
+                    'Vui lòng đợi thợ hoàn thành công việc và xác nhận chi phí.'
+                );
+                setPaymentLoading(false);
+                return;
+            }
 
-            Alert.alert(
-                'Thanh toán thành công!',
-                'Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            navigation.navigate('Bookings', { refresh: true });
+            if (paymentMethod === 'VNPAY') {
+                // VNPAY flow
+                console.log('🚀 Starting VNPAY payment flow...');
+                const paymentData = await paymentService.createVNPAYPayment(bookingId);
+                
+                // Open checkout URL in browser
+                const result = await WebBrowser.openBrowserAsync(paymentData.checkoutUrl);
+                
+                // Navigate to payment result screen to poll status
+                navigation.replace('PaymentResult', {
+                    bookingId,
+                    paymentId: paymentData.paymentId,
+                    method: 'VNPAY'
+                });
+                
+            } else if (paymentMethod === 'SEPAY') {
+                // SePay QR flow
+                const amount = booking.finalAmount || booking.estimatedCost || 0;
+                const paymentData = await paymentService.createSepayPayment(
+                    bookingId,
+                    amount,
+                    `Thanh toán booking ${bookingId.substring(0, 8)}`
+                );
+                
+                // Navigate to QR screen
+                navigation.replace('SepayQR', {
+                    bookingId,
+                    orderCode: paymentData.orderCode,
+                    paymentCode: paymentData.paymentCode,
+                    qrImageUrl: paymentData.qrImageUrl,
+                    amount: paymentData.amount,
+                    paymentId: paymentData.paymentId
+                });
+                
+            } else {
+                // Cash or other payment methods (old flow)
+                const paymentData = {
+                    amount: booking.finalAmount,
+                    paymentType: 'final',
+                    paymentMethod: paymentMethod,
+                };
+
+                console.log('💳 Creating payment:', paymentData);
+
+                const response = await apiClient.post(
+                    `/api/bookings/${bookingId}/payments`,
+                    paymentData
+                );
+
+                console.log('✅ Payment created:', response.data);
+
+                Alert.alert(
+                    'Thanh toán thành công!',
+                    'Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                navigation.navigate('BookingHistory');
+                            },
                         },
-                    },
-                ]
-            );
+                    ]
+                );
+            }
         } catch (error) {
             console.error('❌ Payment error:', error);
             console.error('❌ Error response:', error.response?.data);
+            
+            let errorMessage = 'Không thể thực hiện thanh toán. Vui lòng thử lại.';
+            
+            // Handle specific error cases
+            if (error.status === 500) {
+                if (booking?.status === 'completed') {
+                    errorMessage = 'Không thể tạo thanh toán cho booking đã hoàn thành.\n\nVui lòng liên hệ hỗ trợ nếu bạn cần thanh toán cho booking này.';
+                } else {
+                    errorMessage = 'Lỗi server. Backend không thể xử lý thanh toán.\n\nVui lòng thử lại sau hoặc liên hệ hỗ trợ.';
+                }
+            } else if (error.status === 400) {
+                errorMessage = error.message || 'Dữ liệu thanh toán không hợp lệ.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
             Alert.alert(
                 'Lỗi thanh toán',
-                error.response?.data?.message || 'Không thể thực hiện thanh toán. Vui lòng thử lại.'
+                errorMessage,
+                [
+                    {
+                        text: 'Đóng',
+                        style: 'cancel'
+                    },
+                    booking?.status === 'completed' && {
+                        text: 'Quay lại',
+                        onPress: () => navigation.goBack()
+                    }
+                ].filter(Boolean)
             );
         } finally {
             setPaymentLoading(false);
@@ -203,28 +357,28 @@ export default function PaymentScreen({ route, navigation }) {
                     <TouchableOpacity
                         style={[
                             styles.paymentMethodCard,
-                            paymentMethod === 'cash' && styles.paymentMethodSelected,
+                            paymentMethod === 'VNPAY' && styles.paymentMethodSelected,
                         ]}
-                        onPress={() => setPaymentMethod('cash')}
+                        onPress={() => setPaymentMethod('VNPAY')}
                     >
                         <View style={styles.paymentMethodLeft}>
                             <View style={styles.paymentMethodIcon}>
-                                <Ionicons name="cash-outline" size={24} color="#4CAF50" />
+                                <Ionicons name="card-outline" size={24} color="#0D47A1" />
                             </View>
                             <View>
-                                <Text style={styles.paymentMethodTitle}>Tiền mặt</Text>
+                                <Text style={styles.paymentMethodTitle}>VNPAY</Text>
                                 <Text style={styles.paymentMethodSubtitle}>
-                                    Thanh toán bằng tiền mặt
+                                    Thẻ ATM, Visa, MasterCard
                                 </Text>
                             </View>
                         </View>
                         <View
                             style={[
                                 styles.radioButton,
-                                paymentMethod === 'cash' && styles.radioButtonSelected,
+                                paymentMethod === 'VNPAY' && styles.radioButtonSelected,
                             ]}
                         >
-                            {paymentMethod === 'cash' && (
+                            {paymentMethod === 'VNPAY' && (
                                 <View style={styles.radioButtonInner} />
                             )}
                         </View>
@@ -233,28 +387,28 @@ export default function PaymentScreen({ route, navigation }) {
                     <TouchableOpacity
                         style={[
                             styles.paymentMethodCard,
-                            paymentMethod === 'bank_transfer' && styles.paymentMethodSelected,
+                            paymentMethod === 'SEPAY' && styles.paymentMethodSelected,
                         ]}
-                        onPress={() => setPaymentMethod('bank_transfer')}
+                        onPress={() => setPaymentMethod('SEPAY')}
                     >
                         <View style={styles.paymentMethodLeft}>
                             <View style={styles.paymentMethodIcon}>
-                                <Ionicons name="card-outline" size={24} color="#2196F3" />
+                                <Ionicons name="qr-code-outline" size={24} color="#4CAF50" />
                             </View>
                             <View>
-                                <Text style={styles.paymentMethodTitle}>Chuyển khoản</Text>
+                                <Text style={styles.paymentMethodTitle}>Chuyển khoản QR</Text>
                                 <Text style={styles.paymentMethodSubtitle}>
-                                    Chuyển khoản ngân hàng
+                                    Quét mã QR để thanh toán
                                 </Text>
                             </View>
                         </View>
                         <View
                             style={[
                                 styles.radioButton,
-                                paymentMethod === 'bank_transfer' && styles.radioButtonSelected,
+                                paymentMethod === 'SEPAY' && styles.radioButtonSelected,
                             ]}
                         >
-                            {paymentMethod === 'bank_transfer' && (
+                            {paymentMethod === 'SEPAY' && (
                                 <View style={styles.radioButtonInner} />
                             )}
                         </View>
@@ -285,66 +439,6 @@ export default function PaymentScreen({ route, navigation }) {
                             ]}
                         >
                             {paymentMethod === 'momo' && (
-                                <View style={styles.radioButtonInner} />
-                            )}
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.paymentMethodCard,
-                            paymentMethod === 'zalopay' && styles.paymentMethodSelected,
-                        ]}
-                        onPress={() => setPaymentMethod('zalopay')}
-                    >
-                        <View style={styles.paymentMethodLeft}>
-                            <View style={styles.paymentMethodIcon}>
-                                <Ionicons name="wallet-outline" size={24} color="#0068FF" />
-                            </View>
-                            <View>
-                                <Text style={styles.paymentMethodTitle}>ZaloPay</Text>
-                                <Text style={styles.paymentMethodSubtitle}>
-                                    Thanh toán qua ZaloPay
-                                </Text>
-                            </View>
-                        </View>
-                        <View
-                            style={[
-                                styles.radioButton,
-                                paymentMethod === 'zalopay' && styles.radioButtonSelected,
-                            ]}
-                        >
-                            {paymentMethod === 'zalopay' && (
-                                <View style={styles.radioButtonInner} />
-                            )}
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.paymentMethodCard,
-                            paymentMethod === 'vnpay' && styles.paymentMethodSelected,
-                        ]}
-                        onPress={() => setPaymentMethod('vnpay')}
-                    >
-                        <View style={styles.paymentMethodLeft}>
-                            <View style={styles.paymentMethodIcon}>
-                                <Ionicons name="card-outline" size={24} color="#0D47A1" />
-                            </View>
-                            <View>
-                                <Text style={styles.paymentMethodTitle}>VNPay</Text>
-                                <Text style={styles.paymentMethodSubtitle}>
-                                    Thanh toán qua VNPay
-                                </Text>
-                            </View>
-                        </View>
-                        <View
-                            style={[
-                                styles.radioButton,
-                                paymentMethod === 'vnpay' && styles.radioButtonSelected,
-                            ]}
-                        >
-                            {paymentMethod === 'vnpay' && (
                                 <View style={styles.radioButtonInner} />
                             )}
                         </View>

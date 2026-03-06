@@ -19,6 +19,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
     const { userLocation } = useAuth();
     const [loading, setLoading] = useState(true);
     const [jobs, setJobs] = useState([]);
+    const [sortBy, setSortBy] = useState('distance'); // 'distance' or 'newest'
     const [filter, setFilter] = useState({
         categoryId: categoryId || null,
         city: null,
@@ -27,7 +28,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
 
     useEffect(() => {
         fetchNearbyJobs();
-    }, [filter]);
+    }, [filter, sortBy]);
 
     const fetchNearbyJobs = async () => {
         try {
@@ -57,8 +58,16 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                         eta: `${travelTime}-${travelTime + 10}`,
                     };
                 })
-                // Sort theo khoảng cách
-                .sort((a, b) => a.distance - b.distance);
+                // Sort theo lựa chọn: distance hoặc newest
+                .sort((a, b) => {
+                    if (sortBy === 'distance') {
+                        return a.distance - b.distance;
+                    } else if (sortBy === 'newest') {
+                        // Sort by createdAt descending (newest first)
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                    }
+                    return 0;
+                });
 
             setJobs(formattedJobs);
         } catch (error) {
@@ -161,6 +170,42 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                 <Text style={styles.infoBannerText}>
                     {jobs.length} công việc có sẵn gần bạn
                 </Text>
+            </View>
+
+            {/* Sort Options */}
+            <View style={styles.sortContainer}>
+                <TouchableOpacity
+                    style={[styles.sortButton, sortBy === 'distance' && styles.sortButtonActive]}
+                    onPress={() => setSortBy('distance')}
+                >
+                    <Ionicons 
+                        name="navigate" 
+                        size={16} 
+                        color={sortBy === 'distance' ? '#2196F3' : '#666'} 
+                    />
+                    <Text style={[
+                        styles.sortButtonText, 
+                        sortBy === 'distance' && styles.sortButtonTextActive
+                    ]}>
+                        Gần nhất
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.sortButton, sortBy === 'newest' && styles.sortButtonActive]}
+                    onPress={() => setSortBy('newest')}
+                >
+                    <Ionicons 
+                        name="time" 
+                        size={16} 
+                        color={sortBy === 'newest' ? '#2196F3' : '#666'} 
+                    />
+                    <Text style={[
+                        styles.sortButtonText, 
+                        sortBy === 'newest' && styles.sortButtonTextActive
+                    ]}>
+                        Mới nhất
+                    </Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -351,6 +396,36 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1976D2',
         fontWeight: '500',
+    },
+    sortContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f5f7fa',
+        gap: 6,
+    },
+    sortButtonActive: {
+        backgroundColor: '#E3F2FD',
+    },
+    sortButtonText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    sortButtonTextActive: {
+        color: '#2196F3',
+        fontWeight: '600',
     },
     scrollView: {
         flex: 1,

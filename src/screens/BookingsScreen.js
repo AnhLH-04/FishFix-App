@@ -15,7 +15,7 @@ import { getJobsByCustomer } from '../services/jobService';
 const BookingsScreen = ({ navigation }) => {
     const { user } = useAuth();
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState('all');
+    const [activeTab, setActiveTab] = useState('searching');
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     
@@ -60,7 +60,7 @@ const BookingsScreen = ({ navigation }) => {
             return jobs.filter(job => job.status === 'open' || job.status === 'pending' || job.status === 'bidding');
         }
         if (activeTab === 'inProgress') {
-            return jobs.filter(job => job.status === 'accepted' || job.status === 'in_progress');
+            return jobs.filter(job => job.status === 'accepted' || job.status === 'in_progress' || job.status === 'assigned');
         }
         if (activeTab === 'rebook') {
             return jobs.filter(job => job.status === 'completed');

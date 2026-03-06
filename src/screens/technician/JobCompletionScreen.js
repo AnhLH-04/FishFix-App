@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import bookingService from '../../services/bookingService';
 
 export default function JobCompletionScreen({ navigation, route }) {
-    const { job, workDuration } = route.params;
+    const { job, workDuration, bookingId } = route.params;
     const [notes, setNotes] = useState('');
     const [beforePhotos, setBeforePhotos] = useState([]);
     const [afterPhotos, setAfterPhotos] = useState([]);
@@ -37,20 +38,75 @@ export default function JobCompletionScreen({ navigation, route }) {
         Alert.alert('Thêm ảnh', `Chọn ảnh ${type === 'before' ? 'trước' : 'sau'} khi sửa`);
     };
 
-    const handleRequestPayment = () => {
+    const handleRequestPayment = async () => {
+        // Validate input
+        if (!notes || notes.trim() === '') {
+            Alert.alert('Thiếu thông tin', 'Vui lòng nhập ghi chú về công việc đã thực hiện');
+            return;
+        }
+
+        if (parseInt(additionalCost) > 0 && (!costDescription || costDescription.trim() === '')) {
+            Alert.alert('Thiếu thông tin', 'Vui lòng mô tả chi phí phát sinh');
+            return;
+        }
+
         Alert.alert(
             'Yêu cầu thanh toán',
-            `Tổng tiền: ${totalPrice.toLocaleString('vi-VN')} ₫\n\nGửi yêu cầu thanh toán đến khách hàng?`,
+            `Tổng tiền: ${totalPrice.toLocaleString('vi-VN')} ₫\n\n` +
+            `Chi phí ban đầu: ${parseInt(job.price || 0).toLocaleString('vi-VN')} ₫\n` +
+            (parseInt(additionalCost) > 0 ? `Chi phí phát sinh: ${parseInt(additionalCost).toLocaleString('vi-VN')} ₫\n` : '') +
+            `\nGửi yêu cầu thanh toán đến khách hàng?`,
             [
                 { text: 'Hủy', style: 'cancel' },
                 {
                     text: 'Gửi',
-                    onPress: () => {
-                        // Gửi request đến server
-                        navigation.navigate('TechnicianHome', {
-                            showSuccess: true,
-                            message: 'Đã gửi yêu cầu thanh toán!',
-                        });
+                    onPress: async () => {
+                        try {
+                            // Status sẽ được đổi thành 'completed' SAU KHI customer thanh toán thành công
+                            const updateData = {
+                                status: 'in_progress', // Giữ in_progress để customer có thể thanh toán
+                                notes: notes.trim(),
+                                finalAmount: totalPrice,
+                            };
+
+                            if (parseInt(additionalCost) > 0) {
+                                updateData.additionalCosts = {
+                                    amount: parseInt(additionalCost),
+                                    description: costDescription.trim()
+                                };
+                            }
+
+                            // TODO: Add images if uploaded
+                            // if (beforePhotos.length > 0 || afterPhotos.length > 0) {
+                            //     updateData.images = [...beforePhotos, ...afterPhotos];
+                            // }
+
+                            const response = await bookingService.updateBookingStatus(bookingId, updateData);
+
+                            Alert.alert(
+                                'Thành công!',
+                                'Đã hoàn thành công việc và gửi yêu cầu thanh toán.\n\nKhách hàng cần thanh toán để hoàn tất booking.',
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => {
+                                            // Navigate back to technician home
+                                            navigation.navigate('TechnicianHome', {
+                                                showSuccess: true,
+                                                message: 'Đã gửi yêu cầu thanh toán!',
+                                            });
+                                        }
+                                    }
+                                ]
+                            );
+                        } catch (error) {
+                            console.error(' Error completing job:', error);
+                            console.error(' Error details:', error.response?.data || error.message);
+                            Alert.alert(
+                                'Lỗi',
+                                'Không thể hoàn thành công việc. Vui lòng thử lại.'
+                            );
+                        }
                     },
                 },
             ]

@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-export const API_BASE_URL = 'https://fishfix-backend.onrender.com';
+export const API_BASE_URL = 'http://14.225.198.232:8081';
 
 // Cloudinary Configuration
 export const CLOUDINARY_CLOUD_NAME = 'dgds0gqq1';

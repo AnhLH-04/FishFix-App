@@ -9,6 +9,7 @@ import {
     Modal,
     Dimensions,
     Alert,
+    ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
@@ -127,7 +128,6 @@ export default function IncomingRequestScreen({ navigation, route }) {
 
         try {
             setAccepting(true);
-            console.log('✅ Technician accepted booking:', request.bookingId || request.id);
             
             // Cập nhật status booking sang 'confirmed' qua API
             if (request.bookingId) {
@@ -141,16 +141,13 @@ export default function IncomingRequestScreen({ navigation, route }) {
                 }
                 
                 await bookingService.updateBookingStatus(request.bookingId, statusData);
-                
-                // Update job status to 'assigned'
-                console.log('🔄 Updating job status to assigned...');
-                console.log('📋 Job ID:', request.jobId);
+
                 try {
                     await updateJobStatus(request.jobId, 'completed');
-                    console.log('✅ Job status updated to completed');
+                    console.log('Job status updated to completed');
                 } catch (jobError) {
-                    console.error('❌ Failed to update job status:', jobError);
-                    console.error('❌ Error details:', jobError.response?.data);
+                    console.error('Failed to update job status:', jobError);
+                    console.error('Error details:', jobError.response?.data);
                     // Continue even if job update fails
                 }
                 
@@ -212,83 +209,97 @@ export default function IncomingRequestScreen({ navigation, route }) {
                     </Text>
                 </View>
 
-                {/* Request Header */}
-                <View style={styles.header}>
-                    {request.urgent && (
-                        <View style={styles.urgentBadge}>
-                            <Ionicons name="alert-circle" size={20} color="white" />
-                            <Text style={styles.urgentText}>YÊU CẦU GẤP</Text>
-                        </View>
-                    )}
-                    <Text style={styles.headerTitle}>Yêu cầu mới</Text>
-                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                        <Ionicons name="notifications" size={48} color="#FF6B35" />
-                    </Animated.View>
-                </View>
-
-                {/* Customer Info */}
-                <View style={styles.customerSection}>
-                    <View style={styles.avatarContainer}>
-                        <Ionicons name="person-circle" size={60} color="#FF6B35" />
+                <ScrollView 
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                    bounces={true}
+                >
+                    {/* Request Header */}
+                    <View style={styles.header}>
+                        {request.urgent && (
+                            <View style={styles.urgentBadge}>
+                                <Ionicons name="alert-circle" size={20} color="white" />
+                                <Text style={styles.urgentText}>YÊU CẦU GẤP</Text>
+                            </View>
+                        )}
+                        <Text style={styles.headerTitle}>Yêu cầu mới</Text>
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                            <Ionicons name="notifications" size={48} color="#FF6B35" />
+                        </Animated.View>
                     </View>
-                    <Text style={styles.customerName}>{request.customer}</Text>
-                    <View style={styles.ratingContainer}>
-                        <Ionicons name="star" size={16} color="#FFB800" />
-                        <Text style={styles.rating}>{request.rating}</Text>
+
+                    {/* Customer Info */}
+                    <View style={styles.customerSection}>
+                        <View style={styles.avatarContainer}>
+                            <Ionicons name="person-circle" size={60} color="#FF6B35" />
+                        </View>
+                        <Text style={styles.customerName}>{request.customer}</Text>
+                        <View style={styles.ratingContainer}>
+                            <Ionicons name="star" size={16} color="#FFB800" />
+                            <Text style={styles.rating}>{request.rating}</Text>
+                        </View>
                     </View>
-                </View>
 
-                {/* Service Details */}
-                <View style={styles.detailsSection}>
-                    <View style={styles.serviceCard}>
-                        <View style={styles.serviceHeader}>
-                            <Ionicons name="construct" size={28} color="#FF6B35" />
-                            <Text style={styles.serviceName}>{request.service}</Text>
-                        </View>
-
-                        <View style={styles.detailRow}>
-                            <Ionicons name="location" size={20} color="#666" />
-                            <Text style={styles.detailText}>{request.address}</Text>
-                        </View>
-
-                        <View style={styles.infoRow}>
-                            <View style={styles.infoItem}>
-                                <Ionicons name="navigate" size={18} color="#2196F3" />
-                                <Text style={styles.infoLabel}>Khoảng cách</Text>
-                                <Text style={styles.infoValue}>{request.distance}</Text>
+                    {/* Service Details */}
+                    <View style={styles.detailsSection}>
+                        <View style={styles.serviceCard}>
+                            <View style={styles.serviceHeader}>
+                                <Ionicons name="construct" size={28} color="#FF6B35" />
+                                <Text style={styles.serviceName}>{request.service}</Text>
                             </View>
 
-                            <View style={styles.divider} />
+                            <View style={styles.detailRow}>
+                                <Ionicons name="location" size={20} color="#666" />
+                                <Text style={styles.detailText}>{request.address}</Text>
+                            </View>
 
-                            <View style={styles.infoItem}>
-                                <Ionicons name="time" size={18} color="#FF9800" />
-                                <Text style={styles.infoLabel}>Thời gian đến</Text>
-                                <Text style={styles.infoValue}>{request.estimatedTime}</Text>
+                            <View style={styles.infoRow}>
+                                <View style={styles.infoItem}>
+                                    <Ionicons name="navigate" size={18} color="#2196F3" />
+                                    <Text style={styles.infoLabel}>Khoảng cách</Text>
+                                    <Text style={styles.infoValue}>{request.distance}</Text>
+                                </View>
 
-                                {request.depositAmount && (
-                                    <Text style={styles.depositText}>
-                                        (Đặt cọc: {request.depositAmount.toLocaleString('vi-VN')}₫)
-                                    </Text>
-                                )}
+                                <View style={styles.divider} />
+
+                                <View style={styles.infoItem}>
+                                    <Ionicons name="time" size={18} color="#FF9800" />
+                                    <Text style={styles.infoLabel}>Thời gian đến</Text>
+                                    <Text style={styles.infoValue}>{request.estimatedTime}</Text>
+
+                                    {request.depositAmount && (
+                                        <Text style={styles.depositText}>
+                                            (Đặt cọc: {request.depositAmount.toLocaleString('vi-VN')}₫)
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                            </View>
+
+                            <View style={styles.descriptionBox}>
+                                <Text style={styles.descriptionLabel}>Mô tả vấn đề:</Text>
+                                <Text style={styles.description}>{request.description}</Text>
+                            </View>
+
+                            <View style={styles.priceSection}>
+                                <Text style={styles.priceLabel}>Thu nhập ước tính</Text>
+                                <Text style={styles.price}>
+                                    {request.price.toLocaleString('vi-VN')} ₫
+                                </Text>
                             </View>
                         </View>
-                        </View>
+                    {/* </View> */}
 
-                        <View style={styles.descriptionBox}>
-                            <Text style={styles.descriptionLabel}>Mô tả vấn đề:</Text>
-                            <Text style={styles.description}>{request.description}</Text>
-                        </View>
+                    {/* Quick Contact */}
+                    <TouchableOpacity style={styles.contactButton}>
+                        <Ionicons name="call" size={20} color="#2196F3" />
+                        <Text style={styles.contactText}>Gọi ngay cho khách hàng</Text>
+                    </TouchableOpacity>
 
-                        <View style={styles.priceSection}>
-                            <Text style={styles.priceLabel}>Thu nhập ước tính</Text>
-                            <Text style={styles.price}>
-                                {request.price.toLocaleString('vi-VN')} ₫
-                            </Text>
-                        </View>
-                    </View>
-                {/* </View> */}
+                    <View style={{ height: 20 }} />
+                </ScrollView>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Fixed at bottom */}
                 <View style={styles.actionsContainer}>
                     <TouchableOpacity
                         style={styles.rejectButton}
@@ -306,12 +317,6 @@ export default function IncomingRequestScreen({ navigation, route }) {
                         <Text style={styles.acceptText}>Chấp nhận</Text>
                     </TouchableOpacity>
                 </View>
-
-                {/* Quick Contact */}
-                <TouchableOpacity style={styles.contactButton}>
-                    <Ionicons name="call" size={20} color="#2196F3" />
-                    <Text style={styles.contactText}>Gọi ngay cho khách hàng</Text>
-                </TouchableOpacity>
             </SafeAreaView>
         </Modal>
     );
@@ -321,6 +326,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F8F9FA',
+    },
+    scrollView: {
+        flex: 1,
     },
     timerContainer: {
         backgroundColor: 'white',
@@ -401,7 +409,6 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     detailsSection: {
-        flex: 1,
         padding: 15,
     },
     serviceCard: {
@@ -530,6 +537,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         padding: 15,
         gap: 12,
+        backgroundColor: 'white',
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
     },
     rejectButton: {
         flex: 1,
@@ -573,7 +583,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 15,
-        marginBottom: 15,
+        marginTop: 15,
         paddingVertical: 14,
         backgroundColor: 'white',
         borderRadius: 12,

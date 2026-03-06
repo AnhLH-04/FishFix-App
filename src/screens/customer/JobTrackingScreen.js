@@ -25,8 +25,10 @@ export default function JobTrackingScreen({ route, navigation }) {
     const [refreshing, setRefreshing] = useState(false);
     const [pulseAnim] = useState(new Animated.Value(1));
     
-    // Use ref to track if payment alert has been shown (persistent across re-renders)
-    const paymentAlertShown = useRef(false);
+    // Track last finalAmount to detect when technician sends new payment request
+    const lastFinalAmount = useRef(null);
+    // Track if we've shown alert for current finalAmount
+    const hasShownAlertForAmount = useRef(false);
 
     useEffect(() => {
         fetchBookingDetails();
@@ -69,17 +71,28 @@ export default function JobTrackingScreen({ route, navigation }) {
             const bookingResponse = await apiClient.get(`/api/bookings/${bookingId}`);
             const bookingData = bookingResponse.data;
             
-            // Check if worker sent payment request (status = 'completed' and no payment yet)
-            // Only show alert once using ref to prevent repeated alerts
-            if (bookingData.status === 'completed' && !bookingData.Payment && !paymentAlertShown.current) {
-                paymentAlertShown.current = true;
-                // Show alert with payment request only once
+            // Check if worker sent payment request (has finalAmount and no payment yet)
+            const hasFinalAmount = bookingData.finalAmount && bookingData.finalAmount > 0;
+            const hasPayment = bookingData.Payment || bookingData.paymentStatus === 'paid' || bookingData.status === 'paid';
+            const currentFinalAmount = bookingData.finalAmount;
+            
+            const finalAmountChanged = currentFinalAmount && currentFinalAmount !== lastFinalAmount.current;
+            const shouldShowAlert = hasFinalAmount && !hasPayment && 
+                (finalAmountChanged || (!silent && !hasShownAlertForAmount.current));
+            
+            if (shouldShowAlert) {
+                
+                // Mark that we've shown alert for this amount
+                hasShownAlertForAmount.current = true;
+                lastFinalAmount.current = currentFinalAmount;
+                
+                // Show alert with payment request
                 Alert.alert(
                     '💰 Yêu cầu thanh toán',
-                    'Thợ đã hoàn thành công việc và gửi yêu cầu thanh toán. Vui lòng kiểm tra và xác nhận thanh toán.',
+                    `Thợ đã hoàn thành công việc và gửi yêu cầu thanh toán.\n\nTổng tiền: ${currentFinalAmount.toLocaleString('vi-VN')} ₫\n\nVui lòng thanh toán để hoàn tất đơn hàng.`,
                     [
                         {
-                            text: 'Xem chi tiết',
+                            text: 'Thanh toán ngay',
                             onPress: () => {
                                 navigation.navigate('Payment', { bookingId });
                             },
@@ -89,18 +102,26 @@ export default function JobTrackingScreen({ route, navigation }) {
                             style: 'cancel',
                         },
                     ],
-                    { cancelable: false } // Prevent dismissing by tapping outside
+                    { cancelable: false }
                 );
-            } else if (bookingData.Payment) {
-                // Reset flag if payment has been made
-                paymentAlertShown.current = false;
+            } else if (hasPayment) {
+                console.log('Payment already completed');
+                // Reset for next payment request
+                lastFinalAmount.current = null;
+                hasShownAlertForAmount.current = false;
+            } else if (!hasFinalAmount) {
+                console.log('No payment request yet');
+                // Update last amount even if null
+                lastFinalAmount.current = currentFinalAmount;
+            } else if (hasShownAlertForAmount.current) {
+                console.log('Alert already shown for current payment request');
             }
             
             // Update booking state to reflect real-time changes
             setBooking(prevBooking => {
                 // Log status changes for debugging
                 if (prevBooking && prevBooking.status !== bookingData.status) {
-                    console.log(`📊 Status changed: ${prevBooking.status} → ${bookingData.status}`);
+                    console.log(`Status changed: ${prevBooking.status} → ${bookingData.status}`);
                 }
                 return bookingData;
             });
@@ -158,6 +179,10 @@ export default function JobTrackingScreen({ route, navigation }) {
             },
             completed: {
                 text: 'Hoàn thành',
+                color: '#4CAF50',
+            },
+            paid: {
+                text: 'Đã thanh toán',
                 color: '#4CAF50',
             },
             cancelled: {
@@ -299,35 +324,43 @@ export default function JobTrackingScreen({ route, navigation }) {
                         icon="person-add"
                         title="Thợ xác nhận"
                         time={booking.status !== 'pending' ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Đang chờ'}
-                        completed={['confirmed', 'on_the_way', 'arrived', 'in_progress', 'completed'].includes(booking.status)}
+                        completed={['confirmed', 'on_the_way', 'arrived', 'in_progress', 'completed', 'paid'].includes(booking.status)}
                         active={booking.status === 'confirmed'}
                     />
                     <TimelineItem
                         icon="car"
                         title="Thợ đang đi chuyển"
-                        time={['on_the_way', 'arrived', 'in_progress', 'completed'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa bắt đầu'}
-                        completed={['arrived', 'in_progress', 'completed'].includes(booking.status)}
+                        time={['on_the_way', 'arrived', 'in_progress', 'completed', 'paid'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa bắt đầu'}
+                        completed={['arrived', 'in_progress', 'completed', 'paid'].includes(booking.status)}
                         active={booking.status === 'on_the_way'}
                     />
                     <TimelineItem
                         icon="location"
                         title="Thợ đến nơi"
-                        time={['arrived', 'in_progress', 'completed'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeStart)}
-                        completed={['in_progress', 'completed'].includes(booking.status)}
+                        time={['arrived', 'in_progress', 'completed', 'paid'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeStart)}
+                        completed={['in_progress', 'completed', 'paid'].includes(booking.status)}
                         active={booking.status === 'arrived'}
                     />
                     <TimelineItem
                         icon="hammer"
                         title="Bắt đầu sửa chữa"
-                        time={['in_progress', 'completed'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeEnd)}
-                        completed={booking.status === 'completed'}
+                        time={['in_progress', 'completed', 'paid'].includes(booking.status) ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeEnd)}
+                        completed={['completed', 'paid'].includes(booking.status)}
                         active={booking.status === 'in_progress'}
                     />
                     <TimelineItem
                         icon="checkmark-done-circle"
                         title="Hoàn thành"
-                        time={booking.status === 'completed' ? new Date(booking.completedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeEnd)}
-                        completed={booking.status === 'completed'}
+                        time={['completed', 'paid'].includes(booking.status) ? new Date(booking.completedAt || booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : formatTime(booking.scheduledTimeEnd)}
+                        completed={['completed', 'paid'].includes(booking.status)}
+                        active={booking.status === 'completed'}
+                    />
+                    <TimelineItem
+                        icon="card"
+                        title="Thanh toán"
+                        time={booking.status === 'paid' ? new Date(booking.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa thanh toán'}
+                        completed={booking.status === 'paid'}
+                        active={booking.status === 'paid'}
                         isLast={true}
                     />
                 </View>
@@ -354,15 +387,17 @@ export default function JobTrackingScreen({ route, navigation }) {
                     </View>
 
                     <View style={[styles.detailRow, styles.totalRow]}>
-                        <Text style={styles.totalLabel}>Tổng ước tính</Text>
+                        <Text style={styles.totalLabel}>
+                            {booking.finalAmount ? 'Tổng thanh toán' : 'Tổng ước tính'}
+                        </Text>
                         <Text style={styles.totalValue}>
-                            ~{booking.finalAmount?.toLocaleString('vi-VN')}đ
+                            {booking.finalAmount ? '' : '~'}{booking.finalAmount?.toLocaleString('vi-VN') || booking.estimatedCost?.toLocaleString('vi-VN')}đ
                         </Text>
                     </View>
                 </View>
 
-                {/* Payment Button - Show when completed */}
-                {booking.status === 'completed' && !booking.Payment && (
+                {/* Payment Button - Show when worker sent payment request */}
+                {booking.finalAmount && booking.finalAmount > 0 && !booking.Payment && booking.paymentStatus !== 'paid' && booking.status !== 'paid' && (
                     <View style={styles.paymentContainer}>
                         <View style={styles.paymentAlert}>
                             <Ionicons name="cash-outline" size={32} color="#FF9800" />
@@ -378,14 +413,14 @@ export default function JobTrackingScreen({ route, navigation }) {
                             onPress={() => navigation.navigate('Payment', { bookingId })}
                         >
                             <Ionicons name="card" size={24} color="white" />
-                            <Text style={styles.paymentButtonText}>Xác nhận thanh toán</Text>
+                            <Text style={styles.paymentButtonText}>Thanh toán {booking.finalAmount.toLocaleString('vi-VN')}đ</Text>
                             <Ionicons name="arrow-forward" size={24} color="white" />
                         </TouchableOpacity>
                     </View>
                 )}
 
                 {/* Action Buttons */}
-                {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                {booking.status !== 'completed' && booking.status !== 'cancelled' && booking.status !== 'paid' && (
                     <View style={styles.bottomActions}>
                         <TouchableOpacity style={styles.reportButton}>
                             <Text style={styles.reportButtonText}>Báo cáo sự cố</Text>
