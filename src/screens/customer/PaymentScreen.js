@@ -92,15 +92,6 @@ export default function PaymentScreen({ route, navigation }) {
         try {
             setPaymentLoading(true);
 
-            // Log booking state for debugging
-            console.log('📋 Booking details:', {
-                bookingId,
-                status: booking?.status,
-                finalAmount: booking?.finalAmount,
-                estimatedCost: booking?.estimatedCost,
-                paymentStatus: booking?.paymentStatus
-            });
-
             // Validate booking status
             if (booking?.status === 'completed' && booking?.paymentStatus === 'paid') {
                 Alert.alert(
@@ -112,7 +103,6 @@ export default function PaymentScreen({ route, navigation }) {
             }
 
             // Check if booking is in valid state for payment
-            // Allow payment for: confirmed, in_progress, assigned
             const validStatuses = ['confirmed', 'in_progress', 'assigned'];
             if (booking?.status && !validStatuses.includes(booking.status.toLowerCase())) {
                 Alert.alert(
@@ -136,7 +126,6 @@ export default function PaymentScreen({ route, navigation }) {
 
             if (paymentMethod === 'VNPAY') {
                 // VNPAY flow
-                console.log('🚀 Starting VNPAY payment flow...');
                 const paymentData = await paymentService.createVNPAYPayment(bookingId);
                 
                 // Open checkout URL in browser
@@ -176,14 +165,10 @@ export default function PaymentScreen({ route, navigation }) {
                     paymentMethod: paymentMethod,
                 };
 
-                console.log('💳 Creating payment:', paymentData);
-
                 const response = await apiClient.post(
                     `/api/bookings/${bookingId}/payments`,
                     paymentData
                 );
-
-                console.log('✅ Payment created:', response.data);
 
                 Alert.alert(
                     'Thanh toán thành công!',
