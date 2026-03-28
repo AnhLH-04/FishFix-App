@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Linking,
     Alert,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import apiClient from '../../services/apiClient';
 import workerService from '../../services/workerService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function JobTrackingScreen({ route, navigation }) {
     const { bookingId } = route.params;

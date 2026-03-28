@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils/colors';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen({ route, navigation }) {
     const { role } = route.params || { role: 'customer' };
@@ -192,6 +193,7 @@ export default function LoginScreen({ route, navigation }) {
     };
 
     return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
@@ -408,6 +410,7 @@ export default function LoginScreen({ route, navigation }) {
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

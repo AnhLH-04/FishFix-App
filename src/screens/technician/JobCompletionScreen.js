@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     ScrollView,
     TextInput,
     Image,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import bookingService from '../../services/bookingService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function JobCompletionScreen({ navigation, route }) {
     const { job, workDuration, bookingId } = route.params;

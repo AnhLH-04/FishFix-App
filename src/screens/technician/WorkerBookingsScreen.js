@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiClient';
+import bookingService from '../../services/bookingService';
+import workerService from '../../services/workerService';
 
 /**
  * WorkerBookingsScreen
@@ -23,6 +25,7 @@ export default function WorkerBookingsScreen({ navigation }) {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [workerId, setWorkerId] = useState(null);
 
     useEffect(() => {
         fetchWorkerBookings();
@@ -40,21 +43,21 @@ export default function WorkerBookingsScreen({ navigation }) {
             if (!silent) setLoading(true);
             
             console.log('📋 Fetching bookings for worker:', user?.id);
+            const reponse = await workerService.getWorkerByUserId(user?.id);
+            setWorkerId(reponse.workerId);
+            console.log('✅ Worker ID:', reponse.workerId);
             
             // Get all bookings where workerId = current user
-            const response = await apiClient.get('/api/bookings', {
-                params: { workerId: user?.id }
+            const response = await bookingService.getBookings({
+                workerId: reponse.workerId,
             });
-            
-            setBookings(response.data || []);
-            console.log('✅ Found', response.data?.length || 0, 'bookings');
-            
-            // Check for new pending bookings
-            const pendingBookings = response.data?.filter(b => b.status === 'pending') || [];
-            if (pendingBookings.length > 0 && !silent) {
-                // Show notification badge or alert
-                console.log('🔔 You have', pendingBookings.length, 'new booking(s)!');
-            }
+            const allBookings = response;
+            const completedBookings = allBookings.filter(
+                b => b.status === 'completed' || b.status === 'paid' || b.status === 'arrived'
+            );
+
+            setBookings(completedBookings);
+            console.log('✅ Found', completedBookings.length, 'completed bookings');
         } catch (error) {
             console.error('❌ Error fetching worker bookings:', error);
         } finally {
@@ -87,13 +90,10 @@ export default function WorkerBookingsScreen({ navigation }) {
 
     const getStatusInfo = (status) => {
         switch (status) {
-            case 'pending':
-                return { text: 'Mới', color: '#FF9800', icon: 'alert-circle' };
-            case 'confirmed':
-            case 'in_progress':
-                return { text: 'Đang làm', color: '#2196F3', icon: 'construct' };
             case 'completed':
                 return { text: 'Hoàn thành', color: '#4CAF50', icon: 'checkmark-circle' };
+            case 'paid':
+                return { text: 'Đã thanh toán', color: '#2E7D32', icon: 'wallet' };
             case 'cancelled':
                 return { text: 'Đã hủy', color: '#F44336', icon: 'close-circle' };
             default:
@@ -103,7 +103,7 @@ export default function WorkerBookingsScreen({ navigation }) {
 
     const renderBookingItem = ({ item }) => {
         const statusInfo = getStatusInfo(item.status);
-        const isNew = item.status === 'pending';
+        const isNew = false;
         
         return (
             <TouchableOpacity
@@ -147,12 +147,10 @@ export default function WorkerBookingsScreen({ navigation }) {
                     </View>
                 </View>
 
-                {isNew && (
-                    <TouchableOpacity style={styles.viewButton}>
-                        <Text style={styles.viewButtonText}>Xem chi tiết</Text>
-                        <Ionicons name="arrow-forward" size={18} color="#FF6B35" />
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.viewButton}>
+                    <Text style={styles.viewButtonText}>Xem chi tiết</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#FF6B35" />
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
@@ -160,7 +158,7 @@ export default function WorkerBookingsScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Booking của tôi</Text>
+                <Text style={styles.headerTitle}>Lịch sử làm việc</Text>
                 <TouchableOpacity onPress={onRefresh}>
                     <Ionicons name="refresh" size={24} color="#333" />
                 </TouchableOpacity>
@@ -169,9 +167,9 @@ export default function WorkerBookingsScreen({ navigation }) {
             {bookings.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <Ionicons name="document-text-outline" size={64} color="#ccc" />
-                    <Text style={styles.emptyText}>Chưa có booking nào</Text>
+                    <Text style={styles.emptyText}>Chưa có booking hoàn thành</Text>
                     <Text style={styles.emptySubtext}>
-                        Các booking mới sẽ xuất hiện ở đây
+                        Booking đã làm xong sẽ xuất hiện ở đây
                     </Text>
                 </View>
             ) : (

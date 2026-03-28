@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Alert,
     TextInput,
@@ -15,6 +14,7 @@ import apiClient from '../../services/apiClient';
 import paymentService from '../../services/paymentService';
 import * as WebBrowser from 'expo-web-browser';
 import colors from '../../utils/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PaymentScreen({ route, navigation }) {
     const { bookingId } = route.params;
@@ -31,55 +31,6 @@ export default function PaymentScreen({ route, navigation }) {
         try {
             const response = await apiClient.get(`/api/bookings/${bookingId}`);
             setBooking(response.data);
-            
-            // // Check if booking already has successful payment
-            // try {
-            //     const latestPayment = await paymentService.getLatestPayment(bookingId);
-            //     if (latestPayment && latestPayment.status === 'SUCCEEDED') {
-            //         console.log('⚠️ Booking already has successful payment:', latestPayment);
-            //         Alert.alert(
-            //             'Đã thanh toán',
-            //             'Booking này đã được thanh toán thành công rồi.',
-            //             [
-            //                 {
-            //                     text: 'Về danh sách booking',
-            //                     onPress: () => navigation.goBack()
-            //                 }
-            //             ]
-            //         );
-            //     }
-            // } catch (paymentError) {
-            //     // 404 means no payment exists yet
-            //     if (paymentError.status === 404) {
-            //         console.log('ℹ️ No payment record found for this booking');
-                    
-            //         // If booking is in_progress with finalAmount, it's ready for payment
-            //         if (response.data.status === 'in_progress' && response.data.finalAmount) {
-            //             console.log('✅ Booking ready for payment - finalAmount:', response.data.finalAmount);
-            //             // No alert needed, customer can proceed to pay
-            //         }
-            //         // If booking is completed but no payment, show warning
-            //         else if (response.data.status === 'completed') {
-            //             Alert.alert(
-            //                 'Cảnh báo',
-            //                 'Booking này đã hoàn thành nhưng chưa có thông tin thanh toán. Có thể đã thanh toán bằng tiền mặt hoặc phương thức khác.\n\nBạn có muốn tiếp tục thanh toán online không?',
-            //                 [
-            //                     {
-            //                         text: 'Hủy',
-            //                         style: 'cancel',
-            //                         onPress: () => navigation.goBack()
-            //                     },
-            //                     {
-            //                         text: 'Tiếp tục',
-            //                         style: 'default'
-            //                     }
-            //                 ]
-            //             );
-            //         }
-            //     } else {
-            //         console.error('Error checking payment status:', paymentError);
-            //     }
-            // }
         } catch (error) {
             console.error('Error fetching booking:', error);
             Alert.alert('Lỗi', 'Không thể tải thông tin đơn hàng');
@@ -91,39 +42,6 @@ export default function PaymentScreen({ route, navigation }) {
     const handlePayment = async () => {
         try {
             setPaymentLoading(true);
-
-            // Validate booking status
-            if (booking?.status === 'completed' && booking?.paymentStatus === 'paid') {
-                Alert.alert(
-                    'Đã thanh toán',
-                    'Booking này đã được thanh toán rồi.'
-                );
-                setPaymentLoading(false);
-                return;
-            }
-
-            // Check if booking is in valid state for payment
-            const validStatuses = ['confirmed', 'in_progress', 'assigned'];
-            if (booking?.status && !validStatuses.includes(booking.status.toLowerCase())) {
-                Alert.alert(
-                    'Không thể thanh toán',
-                    `Booking đang ở trạng thái "${booking.status}".\n\n` +
-                    `Chỉ có thể thanh toán khi booking đang được xử lý.`
-                );
-                setPaymentLoading(false);
-                return;
-            }
-
-            // Check if finalAmount exists
-            if (!booking?.finalAmount || booking.finalAmount <= 0) {
-                Alert.alert(
-                    'Chưa có thông tin thanh toán',
-                    'Vui lòng đợi thợ hoàn thành công việc và xác nhận chi phí.'
-                );
-                setPaymentLoading(false);
-                return;
-            }
-
             if (paymentMethod === 'VNPAY') {
                 // VNPAY flow
                 const paymentData = await paymentService.createVNPAYPayment(bookingId);
@@ -177,7 +95,7 @@ export default function PaymentScreen({ route, navigation }) {
                         {
                             text: 'OK',
                             onPress: () => {
-                                navigation.navigate('BookingHistory');
+                                navigation.navigate('Bookings', { refresh: true });
                             },
                         },
                     ]
@@ -186,35 +104,9 @@ export default function PaymentScreen({ route, navigation }) {
         } catch (error) {
             console.error('❌ Payment error:', error);
             console.error('❌ Error response:', error.response?.data);
-            
-            let errorMessage = 'Không thể thực hiện thanh toán. Vui lòng thử lại.';
-            
-            // Handle specific error cases
-            if (error.status === 500) {
-                if (booking?.status === 'completed') {
-                    errorMessage = 'Không thể tạo thanh toán cho booking đã hoàn thành.\n\nVui lòng liên hệ hỗ trợ nếu bạn cần thanh toán cho booking này.';
-                } else {
-                    errorMessage = 'Lỗi server. Backend không thể xử lý thanh toán.\n\nVui lòng thử lại sau hoặc liên hệ hỗ trợ.';
-                }
-            } else if (error.status === 400) {
-                errorMessage = error.message || 'Dữ liệu thanh toán không hợp lệ.';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
             Alert.alert(
                 'Lỗi thanh toán',
-                errorMessage,
-                [
-                    {
-                        text: 'Đóng',
-                        style: 'cancel'
-                    },
-                    booking?.status === 'completed' && {
-                        text: 'Quay lại',
-                        onPress: () => navigation.goBack()
-                    }
-                ].filter(Boolean)
+                error.response?.data?.message || 'Không thể thực hiện thanh toán. Vui lòng thử lại.'
             );
         } finally {
             setPaymentLoading(false);

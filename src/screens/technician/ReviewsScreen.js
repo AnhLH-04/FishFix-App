@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     FlatList,
     ActivityIndicator,
     RefreshControl,
@@ -19,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
 import reviewService from '../../services/reviewService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ReviewsScreen({ navigation }) {
     const { user } = useAuth();

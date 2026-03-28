@@ -48,6 +48,7 @@ import IncomingRequestScreen from '../screens/technician/IncomingRequestScreen';
 import ActiveJobScreen from '../screens/technician/ActiveJobScreen';
 import JobCompletionScreen from '../screens/technician/JobCompletionScreen';
 import ReviewsScreen from '../screens/technician/ReviewsScreen';
+import WorkerBookingsScreen from '../screens/technician/WorkerBookingsScreen';
 import ManageCertificationsScreen from '../screens/technician/ManageCertificationsScreen';
 import ManageSkillsScreen from '../screens/technician/ManageSkillsScreen';
 import WorkerProfileSetupScreen from '../screens/technician/WorkerProfileSetupScreen';
@@ -313,6 +314,18 @@ function TechnicianProfileStack() {
     );
 }
 
+// Technician History Stack Navigator
+function TechnicianHistoryStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="WorkerBookings" component={WorkerBookingsScreen} />
+            <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} />
+            <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+        </Stack.Navigator>
+    );
+}
+
 // Bottom Tab Navigator for Technician
 function TechnicianTabs() {
     const { View, TouchableOpacity, StyleSheet } = require('react-native');
@@ -328,8 +341,8 @@ function TechnicianTabs() {
                         iconName = focused ? 'home' : 'home-outline';
                     } else if (route.name === 'TechnicianJobsTab') {
                         iconName = focused ? 'hammer' : 'hammer-outline';
-                    } else if (route.name === 'TechnicianMessagesTab') {
-                        iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                    } else if (route.name === 'TechnicianHistoryTab') {
+                        iconName = focused ? 'time' : 'time-outline';
                     } else if (route.name === 'TechnicianProfileTab') {
                         iconName = focused ? 'person' : 'person-outline';
                     }
@@ -363,9 +376,9 @@ function TechnicianTabs() {
                 options={{ tabBarLabel: 'Công Việc' }}
             />
             <Tab.Screen
-                name="TechnicianMessagesTab"
-                component={TechnicianStack}
-                options={{ tabBarLabel: 'Tin Nhắn' }}
+                name="TechnicianHistoryTab"
+                component={TechnicianHistoryStack}
+                options={{ tabBarLabel: 'Lịch Sử' }}
             />
             <Tab.Screen
                 name="TechnicianProfileTab"

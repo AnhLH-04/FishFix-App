@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Alert,
     Image,
@@ -14,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import paymentService from '../../services/paymentService';
 import colors from '../../utils/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SepayQRScreen = ({ route, navigation }) => {
     const { bookingId, orderCode, paymentCode, qrImageUrl, amount, paymentId } = route.params;

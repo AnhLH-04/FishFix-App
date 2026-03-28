@@ -14,6 +14,10 @@ import { useAuth } from '../../context/AuthContext';
 import jobService from '../../services/jobService';
 import locationService from '../../services/locationService';
 
+const TECH_PRIMARY = '#FF6B35';
+const TECH_PRIMARY_DARK = '#E85D2A';
+const TECH_PRIMARY_LIGHT = '#FFF2EC';
+
 const NearbyJobsScreen = ({ navigation, route }) => {
     const { categoryId } = route.params || {};
     const { userLocation } = useAuth();
@@ -113,7 +117,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#2196F3" />
+                    <ActivityIndicator size="large" color={TECH_PRIMARY} />
                     <Text style={styles.loadingText}>Đang tìm công việc...</Text>
                 </View>
             </View>
@@ -129,7 +133,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Công Việc Gần Bạn</Text>
                     <TouchableOpacity style={styles.refreshButton} onPress={fetchNearbyJobs}>
-                        <Ionicons name="refresh" size={24} color="#2196F3" />
+                        <Ionicons name="refresh" size={24} color={TECH_PRIMARY} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.emptyContainer}>
@@ -156,17 +160,17 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                         style={styles.mapButton} 
                         onPress={() => navigation.navigate('JobMap', { categoryId: filter.categoryId })}
                     >
-                        <Ionicons name="map" size={24} color="#2196F3" />
+                        <Ionicons name="map" size={24} color={TECH_PRIMARY} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.refreshButton} onPress={fetchNearbyJobs}>
-                        <Ionicons name="refresh" size={24} color="#2196F3" />
+                        <Ionicons name="refresh" size={24} color={TECH_PRIMARY} />
                     </TouchableOpacity>
                 </View>
             </View>
 
             {/* Info Banner */}
             <View style={styles.infoBanner}>
-                <Ionicons name="briefcase" size={20} color="#2196F3" />
+                <Ionicons name="briefcase" size={20} color={TECH_PRIMARY} />
                 <Text style={styles.infoBannerText}>
                     {jobs.length} công việc có sẵn gần bạn
                 </Text>
@@ -181,7 +185,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                     <Ionicons 
                         name="navigate" 
                         size={16} 
-                        color={sortBy === 'distance' ? '#2196F3' : '#666'} 
+                        color={sortBy === 'distance' ? TECH_PRIMARY : '#666'} 
                     />
                     <Text style={[
                         styles.sortButtonText, 
@@ -197,7 +201,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                     <Ionicons 
                         name="time" 
                         size={16} 
-                        color={sortBy === 'newest' ? '#2196F3' : '#666'} 
+                        color={sortBy === 'newest' ? TECH_PRIMARY : '#666'} 
                     />
                     <Text style={[
                         styles.sortButtonText, 
@@ -242,7 +246,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                             {/* Distance and Time */}
                             <View style={styles.locationInfo}>
                                 <View style={styles.locationItem}>
-                                    <Ionicons name="navigate" size={16} color="#2196F3" />
+                                    <Ionicons name="navigate" size={16} color={TECH_PRIMARY} />
                                     <Text style={styles.locationText}>{job.distanceText}</Text>
                                 </View>
                                 <View style={styles.locationItem}>
@@ -262,7 +266,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                                         Linking.openURL(url);
                                     }}
                                 >
-                                    <Ionicons name="map" size={16} color="#2196F3" />
+                                    <Ionicons name="map" size={16} color={TECH_PRIMARY} />
                                     <Text style={styles.directionText}>Chỉ đường</Text>
                                 </TouchableOpacity>
                             </View>
@@ -278,7 +282,7 @@ const NearbyJobsScreen = ({ navigation, route }) => {
                                 <View style={styles.detailItem}>
                                     <Ionicons name="time" size={16} color="#666" />
                                     <Text style={styles.detailText}>
-                                        {job.preferredTimeStart?.substring(0, 5)} - {job.preferredTimeEnd?.substring(0, 5)}
+                                        {job.preferredTimeStart?.substring(0, 5)}
                                     </Text>
                                 </View>
                             </View>
@@ -387,14 +391,14 @@ const styles = StyleSheet.create({
     infoBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E3F2FD',
+        backgroundColor: TECH_PRIMARY_LIGHT,
         paddingHorizontal: 20,
         paddingVertical: 12,
         gap: 8,
     },
     infoBannerText: {
         fontSize: 14,
-        color: '#1976D2',
+        color: TECH_PRIMARY_DARK,
         fontWeight: '500',
     },
     sortContainer: {
@@ -416,7 +420,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sortButtonActive: {
-        backgroundColor: '#E3F2FD',
+        backgroundColor: TECH_PRIMARY_LIGHT,
     },
     sortButtonText: {
         fontSize: 14,
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     sortButtonTextActive: {
-        color: '#2196F3',
+        color: TECH_PRIMARY,
         fontWeight: '600',
     },
     scrollView: {
@@ -510,11 +514,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
-        backgroundColor: '#E3F2FD',
+        backgroundColor: TECH_PRIMARY_LIGHT,
     },
     directionText: {
         fontSize: 12,
-        color: '#2196F3',
+        color: TECH_PRIMARY,
         fontWeight: '600',
     },
     detailsRow: {
@@ -555,7 +559,7 @@ const styles = StyleSheet.create({
     },
     viewButton: {
         flex: 1,
-        backgroundColor: '#2196F3',
+        backgroundColor: TECH_PRIMARY,
         paddingVertical: 12,
         borderRadius: 12,
         alignItems: 'center',

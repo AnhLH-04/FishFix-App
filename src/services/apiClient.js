@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL của backend
-const API_BASE_URL = 'http://14.225.198.232:8081';
+const API_BASE_URL = 'https://api.fishfix.vn';
 
 // Callback function để handle logout (sẽ được set từ AuthContext)
 let onUnauthorized = null;

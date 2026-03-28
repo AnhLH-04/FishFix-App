@@ -16,7 +16,7 @@ const paymentService = {
       
       const requestBody = {
         method: 'VNPAY',
-        returnUrl: options.returnUrl || 'https://fishfix-backend.onrender.com/api/payments/vnpay/return',
+        returnUrl: options.returnUrl || 'https://api.fishfix.vn/api/payments/vnpay/return',
         clientContext: {
           appScheme: 'fishfix',
           returnPath: 'payment-result',

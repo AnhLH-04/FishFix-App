@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ActivityIndicator,
     RefreshControl,
@@ -15,6 +14,7 @@ import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiClient';
 import workerService from '../../services/workerService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TechnicianHomeScreen({ navigation }) {
     const { user, logout } = useAuth();

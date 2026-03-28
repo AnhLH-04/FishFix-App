@@ -4,24 +4,51 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     ScrollView,
     Linking,
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../utils/colors';
 import bookingService from '../../services/bookingService';
+import jobService from '../../services/jobService';
+import locationService from '../../services/locationService';
 import { useAuth } from '../../context/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import apiClient from '../../services/apiClient';
 
 export default function ActiveJobScreen({ navigation, route }) {
-    const { user } = useAuth();
+    const { user, userLocation } = useAuth();
     const [jobStatus, setJobStatus] = useState('going_to_customer'); // going_to_customer, arrived, working, completed
     const [timer, setTimer] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [jobData, setJobData] = useState(null);
+    const [distanceText, setDistanceText] = useState('Đang tính...');
 
-    const job = route?.params?.job || {
+    const resolveCustomerById = async (customerId) => {
+        if (!customerId) return null;
+
+        try {
+            const response = await apiClient.get('/api/identity/users', {
+                params: { roleId: 1 },
+            });
+
+            const users = Array.isArray(response?.data)
+                ? response.data
+                : Array.isArray(response?.data?.data)
+                    ? response.data.data
+                    : [];
+
+            return users.find(
+                (u) => String(u?.userId || '').toLowerCase() === String(customerId).toLowerCase()
+            ) || null;
+        } catch (error) {
+            console.error('Error resolving customer from identity users:', error);
+            return null;
+        }
+    };
+
+    const routeJob = route?.params?.job || {
         id: 1,
         customer: 'Nguyễn Văn A',
         service: 'Sửa máy lạnh',
@@ -36,8 +63,117 @@ export default function ActiveJobScreen({ navigation, route }) {
         },
     };
 
+    const job = jobData || routeJob;
+
     // Get bookingId from route params
     const bookingId = route?.params?.bookingId;
+
+    const buildAddress = (jobPayload) => {
+        const parts = [
+            jobPayload?.address,
+            jobPayload?.ward,
+            jobPayload?.district,
+            jobPayload?.city,
+        ].filter(Boolean);
+
+        return parts.length > 0 ? parts.join(', ') : 'Địa chỉ chưa cập nhật';
+    };
+
+    const calculateDistanceToCustomer = async (coordinates) => {
+        if (!coordinates?.latitude || !coordinates?.longitude) {
+            setDistanceText(job?.distance || 'Chưa có dữ liệu');
+            return;
+        }
+
+        try {
+            const currentLocation = userLocation || locationService.getMockLocation();
+            const distanceKm = locationService.calculateDistance(
+                currentLocation.latitude,
+                currentLocation.longitude,
+                coordinates.latitude,
+                coordinates.longitude
+            );
+            setDistanceText(locationService.formatDistance(distanceKm));
+        } catch (error) {
+            console.error('Error calculating distance:', error);
+            setDistanceText(job?.distance || 'Chưa có dữ liệu');
+        }
+    };
+
+    const loadBookingAndCustomerInfo = async () => {
+        if (!bookingId) {
+            setJobData(routeJob);
+            calculateDistanceToCustomer(routeJob?.coordinates);
+            return;
+        }
+
+        try {
+            const booking = await bookingService.getBookingById(bookingId);
+            const customerId = booking?.customerId || booking?.CustomerId || routeJob?.customerId;
+            const identityCustomer = await resolveCustomerById(customerId);
+
+            let jobDetail = booking?.Job;
+            if (!jobDetail && booking?.jobId) {
+                try {
+                    jobDetail = await jobService.getJobById(booking.jobId);
+                } catch (jobError) {
+                    console.warn('Cannot load job detail from jobId:', booking.jobId, jobError?.message);
+                }
+            }
+
+            const mergedJob = {
+                ...routeJob,
+                bookingId: booking?.bookingId || bookingId,
+                jobId: booking?.jobId || routeJob?.jobId,
+                customerId,
+                customer:
+                    identityCustomer?.fullName ||
+                    booking?.Customer?.fullName ||
+                    booking?.customerName ||
+                    routeJob?.customer ||
+                    'Khách hàng',
+                phone:
+                    identityCustomer?.phone ||
+                    booking?.Customer?.phone ||
+                    booking?.phone ||
+                    routeJob?.phone ||
+                    'Chưa cập nhật',
+                service:
+                    jobDetail?.title ||
+                    booking?.serviceName ||
+                    routeJob?.service ||
+                    'Dịch vụ sửa chữa',
+                description:
+                    jobDetail?.description ||
+                    booking?.problem ||
+                    routeJob?.description ||
+                    'Không có mô tả',
+                address: buildAddress(jobDetail || booking) || routeJob?.address,
+                price:
+                    booking?.finalAmount ||
+                    booking?.estimatedCost ||
+                    routeJob?.price ||
+                    0,
+                coordinates: {
+                    latitude:
+                        jobDetail?.latitude ||
+                        booking?.latitude ||
+                        routeJob?.coordinates?.latitude,
+                    longitude:
+                        jobDetail?.longitude ||
+                        booking?.longitude ||
+                        routeJob?.coordinates?.longitude,
+                },
+            };
+
+            setJobData(mergedJob);
+            calculateDistanceToCustomer(mergedJob.coordinates);
+        } catch (error) {
+            console.error('Error loading booking/customer info:', error);
+            setJobData(routeJob);
+            calculateDistanceToCustomer(routeJob?.coordinates);
+        }
+    };
 
     useEffect(() => {
         let interval;
@@ -49,6 +185,16 @@ export default function ActiveJobScreen({ navigation, route }) {
         return () => clearInterval(interval);
     }, [isTimerRunning]);
 
+    useEffect(() => {
+        loadBookingAndCustomerInfo();
+    }, [bookingId]);
+
+    useEffect(() => {
+        if (job?.coordinates?.latitude && job?.coordinates?.longitude) {
+            calculateDistanceToCustomer(job.coordinates);
+        }
+    }, [userLocation?.latitude, userLocation?.longitude]);
+
     const formatTime = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
@@ -57,6 +203,10 @@ export default function ActiveJobScreen({ navigation, route }) {
     };
 
     const handleCall = () => {
+        if (!job?.phone || job.phone === 'Chưa cập nhật') {
+            Alert.alert('Thông báo', 'Chưa có số điện thoại khách hàng');
+            return;
+        }
         Linking.openURL(`tel:${job.phone}`);
     };
 
@@ -65,6 +215,10 @@ export default function ActiveJobScreen({ navigation, route }) {
     };
 
     const handleNavigate = () => {
+        if (!job?.coordinates?.latitude || !job?.coordinates?.longitude) {
+            Alert.alert('Thông báo', 'Chưa có tọa độ để chỉ đường');
+            return;
+        }
         // Open Google Maps or Apple Maps
         const url = `https://www.google.com/maps/dir/?api=1&destination=${job.coordinates.latitude},${job.coordinates.longitude}`;
         Linking.openURL(url);
@@ -187,7 +341,7 @@ export default function ActiveJobScreen({ navigation, route }) {
     const handleCompleteWork = async () => {
         setIsTimerRunning(false);
         // Status sẽ được đổi sau khi customer thanh toán thành công
-        navigation.navigate('JobCompletion', { 
+        navigation.navigate('JobCompletion', {
             job, 
             workDuration: timer, 
             bookingId,
@@ -288,7 +442,6 @@ export default function ActiveJobScreen({ navigation, route }) {
                         </View>
                     </View>
                 )}
-
                 {/* Customer Info */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Thông tin khách hàng</Text>
@@ -334,7 +487,7 @@ export default function ActiveJobScreen({ navigation, route }) {
                     </View>
                     <View style={styles.distanceRow}>
                         <Ionicons name="navigate" size={18} color="#2196F3" />
-                        <Text style={styles.distanceText}>Cách bạn {job.distance}</Text>
+                        <Text style={styles.distanceText}>Cách bạn {distanceText}</Text>
                     </View>
                 </View>
 
