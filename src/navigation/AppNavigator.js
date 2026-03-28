@@ -1,29 +1,78 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
-// Screens
-import HomeScreen from '../screens/HomeScreen';
-import AIDiagnosisScreen from '../screens/AIDiagnosisScreen';
-import ServiceDetailScreen from '../screens/ServiceDetailScreen';
-import TechnicianListScreen from '../screens/TechnicianListScreen';
-import BookingScreen from '../screens/BookingScreen';
-import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
-import MaintenanceScreen from '../screens/MaintenanceScreen';
+// Auth Screens
+import RoleSelectionScreen from '../screens/RoleSelectionScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+
+// Customer Screens
+import HomeScreen from '../screens/customer/HomeScreen';
+import AIDiagnosisScreen from '../screens/customer/AIDiagnosisScreen';
+import ServiceDetailScreen from '../screens/customer/ServiceDetailScreen';
+import CreateJobScreen from '../screens/customer/CreateJobScreen';
+import TechnicianListScreen from '../screens/customer/TechnicianListScreen';
+import BookingScreen from '../screens/customer/BookingScreen';
+import BookingConfirmationScreen from '../screens/customer/BookingConfirmationScreen';
+import MaintenanceScreen from '../screens/customer/MaintenanceScreen';
+import BookingTypeScreen from '../screens/customer/BookingTypeScreen';
+import NearbyTechniciansScreen from '../screens/customer/NearbyTechniciansScreen';
+import InstantBookingScreen from '../screens/customer/InstantBookingScreen';
+import InstantBookingConfirmationScreen from '../screens/customer/InstantBookingConfirmationScreen';
+import JobBidsScreen from '../screens/customer/JobBidsScreen';
+import JobTrackingScreen from '../screens/customer/JobTrackingScreen';
+import PaymentScreen from '../screens/customer/PaymentScreen';
+import PaymentResultScreen from '../screens/customer/PaymentResultScreen';
+import SepayQRScreen from '../screens/customer/SepayQRScreen';
+import BookingHistoryScreen from '../screens/customer/BookingHistoryScreen';
+
+// Common Screens
 import BookingsScreen from '../screens/BookingsScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import BookingTypeScreen from '../screens/BookingTypeScreen';
-import NearbyTechniciansScreen from '../screens/NearbyTechniciansScreen';
-import InstantBookingScreen from '../screens/InstantBookingScreen';
-import InstantBookingConfirmationScreen from '../screens/InstantBookingConfirmationScreen';
+
+// Technician Screens
+import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
+import TechnicianProfileScreen from '../screens/technician/TechnicianProfileScreen';
+import JobsScreen from '../screens/technician/JobsScreen';
+import JobDetailScreen from '../screens/technician/JobDetailScreen';
+import EarningsScreen from '../screens/technician/EarningsScreen';
+import ScheduleScreen from '../screens/technician/ScheduleScreen';
+import IncomingRequestScreen from '../screens/technician/IncomingRequestScreen';
+import ActiveJobScreen from '../screens/technician/ActiveJobScreen';
+import JobCompletionScreen from '../screens/technician/JobCompletionScreen';
+import ReviewsScreen from '../screens/technician/ReviewsScreen';
+import WorkerBookingsScreen from '../screens/technician/WorkerBookingsScreen';
+import ManageCertificationsScreen from '../screens/technician/ManageCertificationsScreen';
+import ManageSkillsScreen from '../screens/technician/ManageSkillsScreen';
+import WorkerProfileSetupScreen from '../screens/technician/WorkerProfileSetupScreen';
+import EditProfileScreen from '../screens/technician/EditProfileScreen';
+import NearbyJobsScreen from '../screens/technician/NearbyJobsScreen';
+import JobMapScreen from '../screens/technician/JobMapScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const AuthStack = createStackNavigator();
 
-// Home Stack Navigator
+// Auth Navigator
+function AuthNavigator() {
+    return (
+        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+            <AuthStack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <AuthStack.Screen name="Login" component={LoginScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+            <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        </AuthStack.Navigator>
+    );
+}
+
+// Home Stack Navigator (Customer)
 function HomeStack() {
     return (
         <Stack.Navigator
@@ -33,6 +82,13 @@ function HomeStack() {
         >
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+            <Stack.Screen 
+                name="CreateJob" 
+                component={CreateJobScreen}
+                options={{
+                    headerShown: false,
+                }}
+            />
             <Stack.Screen name="AIDiagnosis" component={AIDiagnosisScreen} />
             <Stack.Screen name="BookingType" component={BookingTypeScreen} />
             <Stack.Screen name="NearbyTechnicians" component={NearbyTechniciansScreen} />
@@ -42,6 +98,12 @@ function HomeStack() {
             <Stack.Screen name="Booking" component={BookingScreen} />
             <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
             <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -51,6 +113,13 @@ function BookingsStack() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Bookings" component={BookingsScreen} />
+            {/* <Stack.Screen name="JobDetails" component={JobDetailScreen} /> */}
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -69,6 +138,7 @@ function ProfileStack() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -78,8 +148,8 @@ function AICameraScreen() {
     return null; // This is just a placeholder, navigation happens in tabBarButton
 }
 
-// Bottom Tab Navigator
-function AppTabs() {
+// Bottom Tab Navigator for Customer
+function CustomerTabs() {
     const { View, TouchableOpacity, StyleSheet } = require('react-native');
 
     return (
@@ -110,8 +180,8 @@ function AppTabs() {
                     backgroundColor: '#fff',
                     borderTopWidth: 1,
                     borderTopColor: '#e0e0e0',
-                    height: 60,
-                    paddingBottom: 8,
+                    height: 80,
+                    paddingBottom: 20,
                     paddingTop: 8,
                 },
                 tabBarLabelStyle: {
@@ -155,6 +225,8 @@ function AppTabs() {
                             }}
                         >
                             <View style={{
+                                paddingLeft: 5,
+                                paddingTop: 5,
                                 width: 70,
                                 height: 70,
                                 borderRadius: 35,
@@ -172,7 +244,7 @@ function AppTabs() {
                                 borderWidth: 4,
                                 borderColor: '#fff',
                             }}>
-                                <Ionicons name="camera" size={32} color="#fff" />
+                                <Ionicons name="sparkles" size={32} color="#fff" />
                             </View>
                         </TouchableOpacity>
                     ),
@@ -193,11 +265,162 @@ function AppTabs() {
     );
 }
 
+// Technician Stack Navigator
+function TechnicianStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="TechnicianHome" component={TechnicianHomeScreen} />
+            <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="WorkerProfileSetup" component={WorkerProfileSetupScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="Jobs" component={JobsScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            <Stack.Screen name="Earnings" component={EarningsScreen} />
+            <Stack.Screen name="Schedule" component={ScheduleScreen} />
+            <Stack.Screen name="Messages" component={MessagesScreen} />
+            <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} />
+            <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
+            <Stack.Screen name="JobCompletion" component={JobCompletionScreen} />
+            <Stack.Screen name="Reviews" component={ReviewsScreen} />
+            <Stack.Screen name="ManageCertifications" component={ManageCertificationsScreen} />
+            <Stack.Screen name="ManageSkills" component={ManageSkillsScreen} />
+            <Stack.Screen name="NearbyJobs" component={NearbyJobsScreen} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Technician Jobs Stack Navigator
+function TechnicianJobsStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="NearbyJobs" component={NearbyJobsScreen} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Technician Profile Stack Navigator
+function TechnicianProfileStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="TechnicianProfile" component={TechnicianProfileScreen} />
+            <Stack.Screen name="WorkerProfileSetup" component={WorkerProfileSetupScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="ManageCertifications" component={ManageCertificationsScreen} />
+            <Stack.Screen name="ManageSkills" component={ManageSkillsScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Technician History Stack Navigator
+function TechnicianHistoryStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="WorkerBookings" component={WorkerBookingsScreen} />
+            <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} />
+            <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// Bottom Tab Navigator for Technician
+function TechnicianTabs() {
+    const { View, TouchableOpacity, StyleSheet } = require('react-native');
+
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                headerShown: false,
+                tabBarIcon: ({ focused, color, size }) => {
+                    let iconName;
+
+                    if (route.name === 'TechnicianHomeTab') {
+                        iconName = focused ? 'home' : 'home-outline';
+                    } else if (route.name === 'TechnicianJobsTab') {
+                        iconName = focused ? 'hammer' : 'hammer-outline';
+                    } else if (route.name === 'TechnicianHistoryTab') {
+                        iconName = focused ? 'time' : 'time-outline';
+                    } else if (route.name === 'TechnicianProfileTab') {
+                        iconName = focused ? 'person' : 'person-outline';
+                    }
+
+                    return <Ionicons name={iconName} size={size} color={color} />;
+                },
+                tabBarActiveTintColor: '#FF6B35',
+                tabBarInactiveTintColor: '#999',
+                tabBarStyle: {
+                    backgroundColor: '#fff',
+                    borderTopWidth: 1,
+                    borderTopColor: '#e0e0e0',
+                    height: 80,
+                    paddingBottom: 20,
+                    paddingTop: 8,
+                },
+                tabBarLabelStyle: {
+                    fontSize: 12,
+                    fontWeight: '500',
+                },
+            })}
+        >
+            <Tab.Screen
+                name="TechnicianHomeTab"
+                component={TechnicianStack}
+                options={{ tabBarLabel: 'Trang Chủ' }}
+            />
+            <Tab.Screen
+                name="TechnicianJobsTab"
+                component={TechnicianJobsStack}
+                options={{ tabBarLabel: 'Công Việc' }}
+            />
+            <Tab.Screen
+                name="TechnicianHistoryTab"
+                component={TechnicianHistoryStack}
+                options={{ tabBarLabel: 'Lịch Sử' }}
+            />
+            <Tab.Screen
+                name="TechnicianProfileTab"
+                component={TechnicianProfileStack}
+                options={{ tabBarLabel: 'Tài Khoản' }}
+            />
+        </Tab.Navigator>
+    );
+}
+
 // Main App Navigator
 export default function AppNavigator() {
+    const auth = useAuth();
+
+    // Hiển thị loading screen khi đang check auth
+    if (auth.loading) {
+        return (
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="Loading">
+                        {() => (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}>
+                                <Ionicons name="construct" size={60} color="#667eea" />
+                                <Text style={{ marginTop: 20, fontSize: 18, fontWeight: 'bold', color: '#333' }}>Fish Fix Services</Text>
+                                <Text style={{ marginTop: 10, fontSize: 14, color: '#666' }}>Đang tải...</Text>
+                            </View>
+                        )}
+                    </Stack.Screen>
+                </Stack.Navigator>
+            </NavigationContainer>
+        );
+    }
+
     return (
         <NavigationContainer>
-            <AppTabs />
+            {!auth.isAuthenticated ? (
+                <AuthNavigator />
+            ) : auth.isCustomer ? (
+                <CustomerTabs />
+            ) : (
+                <TechnicianTabs />
+            )}
         </NavigationContainer>
     );
 }

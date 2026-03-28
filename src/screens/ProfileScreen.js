@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,10 +6,54 @@ import {
     ScrollView,
     TouchableOpacity,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import authService from '../services/authService';
+import { getJobsByCustomer } from '../services/jobService';
 
 const ProfileScreen = ({ navigation }) => {
+    const { logout } = useAuth();
+    const [userInfo, setUserInfo] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalBookings: 0,
+        completedBookings: 0,
+        averageRating: 4.8
+    });
+
+    useEffect(() => {
+        fetchUserData();
+    }, []);
+
+    const fetchUserData = async () => {
+        try {
+            setLoading(true);
+            
+            // Lấy thông tin user từ API
+            const user = await authService.getCurrentUser();
+            setUserInfo(user);
+            
+            // Lấy danh sách jobs để tính stats
+            if (user?.userId) {
+                const jobs = await getJobsByCustomer(user.userId);
+                const total = jobs?.length || 0;
+                const completed = jobs?.filter(j => j.status === 'completed').length || 0;
+                
+                setStats({
+                    totalBookings: total,
+                    completedBookings: completed,
+                    averageRating: 4.8 // Placeholder
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const menuItems = [
         {
             id: 1,
@@ -74,33 +118,41 @@ const ProfileScreen = ({ navigation }) => {
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Profile Card */}
                 <View style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>👤</Text>
-                        <TouchableOpacity style={styles.editAvatarButton}>
-                            <Ionicons name="camera" size={16} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={styles.userName}>Nguyễn Văn A</Text>
-                    <Text style={styles.userEmail}>nguyenvana@email.com</Text>
-                    <Text style={styles.userPhone}>+84 123 456 789</Text>
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color="#2196F3" />
+                        </View>
+                    ) : (
+                        <>
+                            <View style={styles.avatarContainer}>
+                                <Text style={styles.avatarText}>👤</Text>
+                                <TouchableOpacity style={styles.editAvatarButton}>
+                                    <Ionicons name="camera" size={16} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.userName}>{userInfo?.fullName || 'Người dùng'}</Text>
+                            <Text style={styles.userEmail}>{userInfo?.email || 'email@example.com'}</Text>
+                            <Text style={styles.userPhone}>{userInfo?.phone || '+84 xxx xxx xxx'}</Text>
 
-                    {/* Stats */}
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>24</Text>
-                            <Text style={styles.statLabel}>Đặt lịch</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>18</Text>
-                            <Text style={styles.statLabel}>Hoàn thành</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>4.8</Text>
-                            <Text style={styles.statLabel}>Đánh giá</Text>
-                        </View>
-                    </View>
+                            {/* Stats */}
+                            <View style={styles.statsContainer}>
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statNumber}>{stats.totalBookings}</Text>
+                                    <Text style={styles.statLabel}>Đặt lịch</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statNumber}>{stats.completedBookings}</Text>
+                                    <Text style={styles.statLabel}>Hoàn thành</Text>
+                                </View>
+                                <View style={styles.statDivider} />
+                                <View style={styles.statItem}>
+                                    <Text style={styles.statNumber}>{stats.averageRating.toFixed(1)}</Text>
+                                    <Text style={styles.statLabel}>Đánh giá</Text>
+                                </View>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 {/* Membership Card */}
@@ -120,7 +172,17 @@ const ProfileScreen = ({ navigation }) => {
                 {/* Menu Items */}
                 <View style={styles.menuContainer}>
                     {menuItems.map((item) => (
-                        <TouchableOpacity key={item.id} style={styles.menuItem}>
+                        <TouchableOpacity 
+                            key={item.id} 
+                            style={styles.menuItem}
+                            onPress={() => {
+                                if (item.id === 2) {
+                                    // Lịch sử đặt lịch
+                                    navigation.navigate('BookingHistory');
+                                }
+                                // Thêm các navigation khác ở đây nếu cần
+                            }}
+                        >
                             <View
                                 style={[
                                     styles.menuIconContainer,
@@ -141,7 +203,9 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
                 {/* Logout Button */}
-                <TouchableOpacity style={styles.logoutButton}>
+                <TouchableOpacity style={styles.logoutButton}
+                    onPress={logout}
+                    >
                     <Ionicons name="log-out-outline" size={20} color="#F44336" />
                     <Text style={styles.logoutText}>Đăng xuất</Text>
                 </TouchableOpacity>
@@ -194,6 +258,12 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
+        minHeight: 280,
+    },
+    loadingContainer: {
+        paddingVertical: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     avatarContainer: {
         position: 'relative',

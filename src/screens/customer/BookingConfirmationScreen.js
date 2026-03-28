@@ -9,15 +9,21 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 const BookingConfirmationScreen = ({ navigation, route }) => {
-    const { technician, date, time, payment, category } = route.params;
+    const { jobId, bookingId, technician, date, time, payment, category, serviceDetail } = route.params;
+    
+    // Kiểm tra xem có thợ hay không
+    const hasWorker = technician && technician.id;
+    
+    // Sử dụng jobId hoặc bookingId tùy theo màn hình nào gọi
+    const displayId = jobId || bookingId;
 
     const handleBackHome = () => {
         navigation.navigate('Home');
     };
 
     const handleViewBooking = () => {
-        // Navigate to booking details/history
-        alert('Xem chi tiết đặt lịch');
+        // Navigate to booking details/history - có thể truyền jobId hoặc bookingId
+        navigation.navigate('Bookings', { jobId, bookingId });
     };
 
     return (
@@ -30,7 +36,10 @@ const BookingConfirmationScreen = ({ navigation, route }) => {
                     </View>
                     <Text style={styles.successTitle}>Đặt Lịch Thành Công!</Text>
                     <Text style={styles.successSubtitle}>
-                        Chúng tôi đã gửi thông báo đến thợ sửa chữa
+                        {hasWorker 
+                            ? 'Chúng tôi đã gửi thông báo đến thợ sửa chữa'
+                            : 'Hệ thống sẽ tự động tìm và thông báo đến thợ phù hợp'
+                        }
                     </Text>
                 </View>
 
@@ -38,16 +47,41 @@ const BookingConfirmationScreen = ({ navigation, route }) => {
                 <View style={styles.detailsCard}>
                     <Text style={styles.cardTitle}>📋 Thông Tin Đặt Lịch</Text>
 
-                    <View style={styles.detailRow}>
-                        <View style={styles.iconContainer}>
-                            <Ionicons name="person" size={20} color="#2196F3" />
+                    {displayId && (
+                        <View style={styles.detailRow}>
+                            <View style={styles.iconContainer}>
+                                <Ionicons name="barcode" size={20} color="#2196F3" />
+                            </View>
+                            <View style={styles.detailContent}>
+                                <Text style={styles.detailLabel}>Mã đặt lịch</Text>
+                                <Text style={styles.detailValue}>#{displayId}</Text>
+                            </View>
                         </View>
-                        <View style={styles.detailContent}>
-                            <Text style={styles.detailLabel}>Thợ sửa chữa</Text>
-                            <Text style={styles.detailValue}>{technician.name}</Text>
-                            <Text style={styles.detailSubtext}>{technician.specialty}</Text>
+                    )}
+
+                    {hasWorker ? (
+                        <View style={styles.detailRow}>
+                            <View style={styles.iconContainer}>
+                                <Ionicons name="person" size={20} color="#2196F3" />
+                            </View>
+                            <View style={styles.detailContent}>
+                                <Text style={styles.detailLabel}>Thợ sửa chữa</Text>
+                                <Text style={styles.detailValue}>{technician.name}</Text>
+                                <Text style={styles.detailSubtext}>{technician.specialty}</Text>
+                            </View>
                         </View>
-                    </View>
+                    ) : (
+                        <View style={styles.detailRow}>
+                            <View style={styles.iconContainer}>
+                                <Ionicons name="people" size={20} color="#2196F3" />
+                            </View>
+                            <View style={styles.detailContent}>
+                                <Text style={styles.detailLabel}>Thợ sửa chữa</Text>
+                                <Text style={styles.detailValue}>Hệ thống sẽ tự động phân công</Text>
+                                <Text style={styles.detailSubtext}>Sẽ thông báo đến bạn sau ít phút</Text>
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.detailRow}>
                         <View style={styles.iconContainer}>
@@ -56,7 +90,7 @@ const BookingConfirmationScreen = ({ navigation, route }) => {
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Ngày hẹn</Text>
                             <Text style={styles.detailValue}>
-                                {date.day}, {date.date}/{date.month}/2025
+                                {date.day}, {date.date}/{date.month}/2026
                             </Text>
                         </View>
                     </View>
@@ -71,14 +105,21 @@ const BookingConfirmationScreen = ({ navigation, route }) => {
                         </View>
                     </View>
 
-                    {category && (
+                    {(category || serviceDetail) && (
                         <View style={styles.detailRow}>
                             <View style={styles.iconContainer}>
                                 <Ionicons name="construct" size={20} color="#2196F3" />
                             </View>
                             <View style={styles.detailContent}>
                                 <Text style={styles.detailLabel}>Dịch vụ</Text>
-                                <Text style={styles.detailValue}>{category}</Text>
+                                <Text style={styles.detailValue}>
+                                    {serviceDetail?.name || category}
+                                </Text>
+                                {serviceDetail?.description && (
+                                    <Text style={styles.detailSubtext}>
+                                        {serviceDetail.description}
+                                    </Text>
+                                )}
                             </View>
                         </View>
                     )}
@@ -90,7 +131,6 @@ const BookingConfirmationScreen = ({ navigation, route }) => {
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Thanh toán</Text>
                             <Text style={styles.detailValue}>
-                                {/* {payment === 'cash' && 'Tiền mặt'} */}
                                 {payment === 'card' && 'Thẻ ngân hàng'}
                                 {payment === 'momo' && 'Ví MoMo'}
                                 {payment === 'zalopay' && 'ZaloPay'}

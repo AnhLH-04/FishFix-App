@@ -6,61 +6,72 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    Alert,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
+import workerService from '../../services/workerService';
+import locationService from '../../services/locationService';
 
 const NearbyTechniciansScreen = ({ route, navigation }) => {
-    const { service } = route.params || {};
+    const { service, categoryId } = route.params || {};
+    const { userLocation } = useAuth();
     const [loading, setLoading] = useState(true);
     const [technicians, setTechnicians] = useState([]);
 
     useEffect(() => {
-        // Simulate loading nearby available technicians
-        setTimeout(() => {
-            setTechnicians([
-                {
-                    id: 1,
-                    name: 'Nguyễn Văn A',
-                    avatar: '👨‍🔧',
-                    rating: 4.9,
-                    reviews: 234,
-                    specialty: 'Điện lạnh',
-                    distance: 0.8,
-                    eta: '15-20',
-                    verified: true,
-                    available: true,
-                    price: 150000,
-                },
-                {
-                    id: 2,
-                    name: 'Trần Thị B',
-                    avatar: '👩‍🔧',
-                    rating: 4.8,
-                    reviews: 189,
-                    specialty: 'Điện nước',
-                    distance: 1.2,
-                    eta: '20-25',
-                    verified: true,
-                    available: true,
-                    price: 140000,
-                },
-                {
-                    id: 3,
-                    name: 'Lê Văn C',
-                    avatar: '🧑‍🔧',
-                    rating: 4.7,
-                    reviews: 156,
-                    specialty: 'Điện tử',
-                    distance: 1.5,
-                    eta: '25-30',
-                    verified: true,
-                    available: true,
-                    price: 160000,
-                },
-            ]);
-            setLoading(false);
-        }, 1500);
+        fetchNearbyWorkers();
     }, []);
+
+    const fetchNearbyWorkers = async () => {
+        try {
+            setLoading(true);
+            
+            // Nếu không có location, dùng mock location
+            const location = userLocation || locationService.getMockLocation();
+            
+            // Gọi API lấy thợ gần nhất
+            const workers = await workerService.getNearbyWorkers({
+                categoryId: categoryId,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                radiusKm: 10, // Tìm trong bán kính 10km
+            });
+
+            // Format data và tính toán thêm thông tin
+            const formattedWorkers = workers.map(worker => {
+                const travelTime = locationService.calculateTravelTime(worker.distance || 0);
+                return {
+                    id: worker.workerId,
+                    workerId: worker.workerId,
+                    userId: worker.userId,
+                    name: worker.fullName || 'Thợ',
+                    avatar: worker.avatarUrl || '👨‍🔧',
+                    rating: worker.rating || 0,
+                    reviews: worker.completedJobs || 0,
+                    specialty: worker.skills?.map(s => s.categoryName).join(', ') || '',
+                    distance: worker.distance || 0,
+                    distanceText: locationService.formatDistance(worker.distance || 0),
+                    eta: `${travelTime}-${travelTime + 10}`,
+                    verified: true,
+                    available: true,
+                    price: worker.hourlyRate || 150000,
+                    phone: worker.phone,
+                    bio: worker.bio,
+                    latitude: worker.latitude,
+                    longitude: worker.longitude,
+                };
+            });
+
+            setTechnicians(formattedWorkers);
+        } catch (error) {
+            console.error('Error fetching nearby workers:', error);
+            Alert.alert('Lỗi', 'Không thể tải danh sách thợ');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSelectTechnician = (technician) => {
         navigation.navigate('InstantBooking', {
@@ -131,7 +142,7 @@ const NearbyTechniciansScreen = ({ route, navigation }) => {
                     <Ionicons name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Thợ Gần Bạn</Text>
-                <TouchableOpacity style={styles.refreshButton}>
+                <TouchableOpacity style={styles.refreshButton} onPress={fetchNearbyWorkers}>
                     <Ionicons name="refresh" size={24} color="#2196F3" />
                 </TouchableOpacity>
             </View>
@@ -192,19 +203,36 @@ const NearbyTechniciansScreen = ({ route, navigation }) => {
                             <View style={styles.locationInfo}>
                                 <View style={styles.locationItem}>
                                     <Ionicons name="location" size={16} color="#2196F3" />
-                                    <Text style={styles.locationText}>{tech.distance} km</Text>
+                                    <Text style={styles.locationText}>{tech.distanceText}</Text>
                                 </View>
                                 <View style={styles.locationItem}>
                                     <Ionicons name="time" size={16} color="#4CAF50" />
                                     <Text style={styles.locationText}>Đến trong {tech.eta} phút</Text>
                                 </View>
+                                <TouchableOpacity
+                                    style={styles.directionButton}
+                                    onPress={() => {
+                                        const { userLocation } = useAuth();
+                                        const location = userLocation || locationService.getMockLocation();
+                                        const url = locationService.getDirectionsUrl(
+                                            tech.latitude,
+                                            tech.longitude,
+                                            location.latitude,
+                                            location.longitude
+                                        );
+                                        Linking.openURL(url);
+                                    }}
+                                >
+                                    <Ionicons name="navigate" size={16} color="#2196F3" />
+                                    <Text style={styles.directionText}>Chỉ đường</Text>
+                                </TouchableOpacity>
                             </View>
 
                             {/* Price */}
                             <View style={styles.priceContainer}>
                                 <Text style={styles.priceLabel}>Giá khởi điểm:</Text>
                                 <Text style={styles.price}>
-                                    {tech.price.toLocaleString('vi-VN')} ₫
+                                    {tech.price ? tech.price.toLocaleString('vi-VN') : '0'} ₫
                                 </Text>
                             </View>
 
@@ -436,6 +464,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderBottomWidth: 1,
         borderColor: '#f0f0f0',
+        flexWrap: 'wrap',
     },
     locationItem: {
         flexDirection: 'row',
@@ -446,6 +475,20 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#666',
         fontWeight: '500',
+    },
+    directionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: '#E3F2FD',
+    },
+    directionText: {
+        fontSize: 12,
+        color: '#2196F3',
+        fontWeight: '600',
     },
     priceContainer: {
         flexDirection: 'row',

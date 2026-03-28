@@ -246,7 +246,7 @@ const InstantBookingScreen = ({ route, navigation }) => {
                             <View style={styles.priceRow}>
                                 <Text style={styles.priceLabel}>Giá khởi điểm:</Text>
                                 <Text style={styles.priceValue}>
-                                    {technician.price.toLocaleString('vi-VN')} ₫
+                                    {technician.price ? technician.price.toLocaleString('vi-VN') : '0'} ₫
                                 </Text>
                             </View>
                             <View style={styles.priceNote}>

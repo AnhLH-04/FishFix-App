@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "DemoMMA301",
-    "slug": "DemoMMA301",
+    "name": "FishFix",
+    "slug": "fishfix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,14 +13,24 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyCNq3eqK9-9uvzOY0CXtsHnx0oH2eOPdqU"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anhlh04.fishfix",
+      "versionCode": 1,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCNq3eqK9-9uvzOY0CXtsHnx0oH2eOPdqU"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,6 +38,11 @@
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dc96b0ef-7252-4b4b-86a0-94247a52a8fd"
+      }
+    }
   }
 }
