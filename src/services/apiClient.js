@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL của backend
-const API_BASE_URL = 'https://fishfix-backend.onrender.com';
+const API_BASE_URL = 'https://api.fishfix.vn';
 
 // Callback function để handle logout (sẽ được set từ AuthContext)
 let onUnauthorized = null;
@@ -89,9 +89,16 @@ apiClient.interceptors.response.use(
             
             // Xử lý 500
             if (status === 500) {
+                console.error('🔥 Server Error (500):', {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    requestData: error.config?.data,
+                    responseData: errorData
+                });
                 return Promise.reject({ 
-                    message: 'Lỗi server. Vui lòng thử lại sau.',
-                    status: 500
+                    message: errorData?.message || errorData?.error || 'Lỗi server. Vui lòng thử lại sau.',
+                    status: 500,
+                    detail: errorData
                 });
             }
             

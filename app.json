@@ -24,7 +24,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anhlh04.DemoMMA301",
+      "package": "com.anhlh04.fishfix",
+      "versionCode": 1,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyCNq3eqK9-9uvzOY0CXtsHnx0oH2eOPdqU"
@@ -40,7 +41,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "18ffed2a-fe28-403b-bc1c-0dd6ac1c939b"
+        "projectId": "dc96b0ef-7252-4b4b-86a0-94247a52a8fd"
       }
     }
   }

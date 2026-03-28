@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     Image,
     Dimensions,
     Modal,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
 import workerService from '../../services/workerService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 

@@ -29,6 +29,29 @@ const JobMapScreen = ({ navigation, route }) => {
     const [routeInfo, setRouteInfo] = useState(null);
     const [technicianLocation, setTechnicianLocation] = useState(null);
 
+    const toNumber = (value) => {
+        const n = typeof value === 'string' ? parseFloat(value) : value;
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const isValidCoordinate = (latitude, longitude) => {
+        const lat = toNumber(latitude);
+        const lng = toNumber(longitude);
+
+        if (lat === null || lng === null) return false;
+        if (lat < -90 || lat > 90) return false;
+        if (lng < -180 || lng > 180) return false;
+        return true;
+    };
+
+    const normalizeCoordinate = (latitude, longitude) => {
+        if (!isValidCoordinate(latitude, longitude)) return null;
+        return {
+            latitude: toNumber(latitude),
+            longitude: toNumber(longitude),
+        };
+    };
+
     useEffect(() => {
         initMap();
     }, []);
@@ -38,7 +61,13 @@ const JobMapScreen = ({ navigation, route }) => {
             setLoading(true);
             
             // Lấy vị trí thợ
-            const location = userLocation || locationService.getMockLocation();
+            const rawLocation = userLocation || locationService.getMockLocation();
+            const location = normalizeCoordinate(rawLocation?.latitude, rawLocation?.longitude)
+                ? {
+                    ...rawLocation,
+                    ...normalizeCoordinate(rawLocation.latitude, rawLocation.longitude),
+                }
+                : locationService.getMockLocation();
             
             console.log('🗺️ JobMapScreen - Technician location:', {
                 source: userLocation ? 'Real GPS' : 'Mock Location',
@@ -47,10 +76,8 @@ const JobMapScreen = ({ navigation, route }) => {
                 address: location.fullAddress || 'N/A',
             });
             
-            setTechnicianLocation({
-                latitude: location.latitude,
-                longitude: location.longitude,
-            });
+            const techCoordinate = normalizeCoordinate(location.latitude, location.longitude);
+            setTechnicianLocation(techCoordinate);
 
             // Lấy danh sách jobs
             await fetchNearbyJobs(location);
@@ -68,36 +95,52 @@ const JobMapScreen = ({ navigation, route }) => {
 
             console.log(`📍 Found ${availableJobs.length} jobs`);
 
-            const formattedJobs = availableJobs.map(job => {
-                const distance = locationService.calculateDistance(
-                    location.latitude,
-                    location.longitude,
-                    job.latitude,
-                    job.longitude
-                );
+            const formattedJobs = availableJobs
+                .map(job => {
+                    const coordinate = normalizeCoordinate(job.latitude, job.longitude);
 
-                console.log(`📍 Job "${job.title}": ${job.latitude}, ${job.longitude} → Distance: ${distance.toFixed(2)} km`);
+                    if (!coordinate) {
+                        console.warn(`⚠️ Skip job without valid coordinate: ${job.title} (${job.latitude}, ${job.longitude})`);
+                        return null;
+                    }
 
-                return {
-                    ...job,
-                    distance,
-                    distanceText: locationService.formatDistance(distance),
-                    coordinate: {
-                        latitude: job.latitude,
-                        longitude: job.longitude,
-                    },
-                };
-            }).sort((a, b) => a.distance - b.distance);
+                    const distance = locationService.calculateDistance(
+                        location.latitude,
+                        location.longitude,
+                        coordinate.latitude,
+                        coordinate.longitude
+                    );
+
+                    console.log(`📍 Job "${job.title}": ${coordinate.latitude}, ${coordinate.longitude} → Distance: ${distance.toFixed(2)} km`);
+
+                    return {
+                        ...job,
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        distance,
+                        distanceText: locationService.formatDistance(distance),
+                        coordinate,
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.distance - b.distance);
 
             setJobs(formattedJobs);
 
             // Fit map to show all markers - prioritize jobs location over technician mock location
             if (formattedJobs.length > 0) {
                 // Nếu có jobs, center map vào jobs
-                const allCoordinates = formattedJobs.map(j => j.coordinate);
+                const allCoordinates = formattedJobs
+                    .map(j => j.coordinate)
+                    .filter(c => isValidCoordinate(c?.latitude, c?.longitude));
                 
                 // Chỉ thêm technician location nếu không phải mock location
-                if (userLocation && userLocation.latitude !== 10.7329568) {
+                if (
+                    userLocation &&
+                    userLocation.latitude !== 10.7329568 &&
+                    technicianLocation &&
+                    isValidCoordinate(technicianLocation.latitude, technicianLocation.longitude)
+                ) {
                     allCoordinates.unshift({ latitude: location.latitude, longitude: location.longitude });
                 }
                 
@@ -117,6 +160,15 @@ const JobMapScreen = ({ navigation, route }) => {
     };
 
     const handleJobPress = async (job) => {
+        if (!technicianLocation || !isValidCoordinate(technicianLocation.latitude, technicianLocation.longitude)) {
+            Alert.alert('Lỗi vị trí', 'Không lấy được vị trí hiện tại của bạn.');
+            return;
+        }
+        if (!job?.coordinate || !isValidCoordinate(job.coordinate.latitude, job.coordinate.longitude)) {
+            Alert.alert('Lỗi dữ liệu', 'Công việc này chưa có tọa độ hợp lệ.');
+            return;
+        }
+
         setSelectedJob(job);
         setRouteInfo(null);
         setRouteCoordinates([]);
@@ -226,8 +278,12 @@ const JobMapScreen = ({ navigation, route }) => {
                 style={styles.map}
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                 initialRegion={{
-                    latitude: jobs.length > 0 ? jobs[0].latitude : (technicianLocation?.latitude || 10.7769),
-                    longitude: jobs.length > 0 ? jobs[0].longitude : (technicianLocation?.longitude || 106.7009),
+                    latitude: jobs.length > 0 && isValidCoordinate(jobs[0]?.latitude, jobs[0]?.longitude)
+                        ? jobs[0].latitude
+                        : (technicianLocation?.latitude || 10.7769),
+                    longitude: jobs.length > 0 && isValidCoordinate(jobs[0]?.latitude, jobs[0]?.longitude)
+                        ? jobs[0].longitude
+                        : (technicianLocation?.longitude || 106.7009),
                     latitudeDelta: 0.1,
                     longitudeDelta: 0.1,
                 }}
@@ -237,7 +293,7 @@ const JobMapScreen = ({ navigation, route }) => {
                 loadingEnabled={true}
             >
                 {/* Technician Location Marker */}
-                {technicianLocation && (
+                {technicianLocation && isValidCoordinate(technicianLocation.latitude, technicianLocation.longitude) && (
                     <Marker
                         coordinate={technicianLocation}
                         title="Vị trí của bạn"
@@ -250,7 +306,9 @@ const JobMapScreen = ({ navigation, route }) => {
                 )}
 
                 {/* Job Markers */}
-                {jobs.map((job) => (
+                {jobs
+                    .filter((job) => isValidCoordinate(job?.coordinate?.latitude, job?.coordinate?.longitude))
+                    .map((job) => (
                     <Marker
                         key={job.jobId}
                         coordinate={job.coordinate}

@@ -1,82 +1,166 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     FlatList,
+    ActivityIndicator,
+    RefreshControl,
+    Alert,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import { useAuth } from '../../context/AuthContext';
+import reviewService from '../../services/reviewService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ReviewsScreen({ navigation }) {
-    const [activeFilter, setActiveFilter] = useState('all'); // all, 5, 4, 3, 2, 1
-
-    const stats = {
-        average: 4.8,
-        total: 125,
+    const { user } = useAuth();
+    const [activeFilter, setActiveFilter] = useState('all');
+    const [reviews, setReviews] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [responseModalVisible, setResponseModalVisible] = useState(false);
+    const [selectedReview, setSelectedReview] = useState(null);
+    const [responseText, setResponseText] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [stats, setStats] = useState({
+        average: 0,
+        total: 0,
         breakdown: {
-            5: 90,
-            4: 25,
-            3: 7,
-            2: 2,
-            1: 1,
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
+            1: 0,
         },
+    });
+
+    useEffect(() => {
+        fetchReviews();
+    }, []);
+
+    const fetchReviews = async () => {
+        try {
+            setLoading(true);
+            if (user?.workerId) {
+                // Fetch reviews and rating summary
+                const [reviewsData, ratingSummary] = await Promise.all([
+                    reviewService.getWorkerReviews(user.workerId),
+                    reviewService.getWorkerRatingSummary(user.workerId)
+                ]);
+                
+                console.log('Fetched reviews:', reviewsData);
+                console.log('Rating summary:', ratingSummary);
+                
+                setReviews(reviewsData || []);
+                
+                // Use rating summary from API if available, otherwise calculate manually
+                if (ratingSummary) {
+                    setStats({
+                        average: ratingSummary.averageRating || 0,
+                        total: ratingSummary.totalReviews || 0,
+                        breakdown: calculateBreakdown(reviewsData || []),
+                    });
+                } else {
+                    calculateStats(reviewsData || []);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+            Alert.alert('Lỗi', 'Không thể tải đánh giá');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const reviews = [
-        {
-            id: 1,
-            customer: 'Nguyễn Văn A',
-            rating: 5,
-            date: '30/12/2025',
-            comment: 'Thợ đến đúng giờ, sửa nhanh và chuyên nghiệp. Máy lạnh hoạt động rất tốt. Rất hài lòng!',
-            service: 'Sửa máy lạnh',
-            helpful: 12,
-        },
-        {
-            id: 2,
-            customer: 'Trần Thị B',
-            rating: 5,
-            date: '29/12/2025',
-            comment: 'Anh thợ nhiệt tình, tư vấn kỹ càng. Giá cả hợp lý, chất lượng tốt. Sẽ giới thiệu cho bạn bè!',
-            service: 'Bảo trì tủ lạnh',
-            helpful: 8,
-        },
-        {
-            id: 3,
-            customer: 'Lê Văn C',
-            rating: 4,
-            date: '28/12/2025',
-            comment: 'Tốt, nhưng đến muộn hơn dự kiến 15 phút. Tuy nhiên công việc hoàn thành tốt.',
-            service: 'Sửa máy giặt',
-            helpful: 5,
-        },
-        {
-            id: 4,
-            customer: 'Phạm Thị D',
-            rating: 5,
-            date: '27/12/2025',
-            comment: 'Xuất sắc! Thợ rất am hiểu, sửa nhanh và giải thích rõ ràng về vấn đề.',
-            service: 'Sửa bếp gas',
-            helpful: 10,
-        },
-        {
-            id: 5,
-            customer: 'Hoàng Văn E',
-            rating: 3,
-            date: '26/12/2025',
-            comment: 'Công việc hoàn thành nhưng cần cải thiện về thái độ phục vụ.',
-            service: 'Sửa quạt điện',
-            helpful: 3,
-        },
-    ];
+    const calculateBreakdown = (reviewsData) => {
+        const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        reviewsData.forEach((review) => {
+            const rating = Math.round(review.rating);
+            breakdown[rating] = (breakdown[rating] || 0) + 1;
+        });
+        return breakdown;
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchReviews();
+        setRefreshing(false);
+    };
+
+    const handleRespondToReview = (review) => {
+        setSelectedReview(review);
+        setResponseText('');
+        setResponseModalVisible(true);
+    };
+
+    const submitResponse = async () => {
+        if (!responseText || responseText.trim().length === 0) {
+            Alert.alert('Lỗi', 'Vui lòng nhập phản hồi');
+            return;
+        }
+        
+        try {
+            setSubmitting(true);
+            await reviewService.respondToReview(selectedReview.reviewId, responseText.trim());
+            Alert.alert('Thành công', 'Đã gửi phản hồi');
+            setResponseModalVisible(false);
+            setResponseText('');
+            setSelectedReview(null);
+            await fetchReviews(); // Refresh to show the response
+        } catch (error) {
+            console.error('Error responding to review:', error);
+            Alert.alert('Lỗi', 'Không thể gửi phản hồi');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const closeResponseModal = () => {
+        setResponseModalVisible(false);
+        setResponseText('');
+        setSelectedReview(null);
+    };
+
+    const calculateStats = (reviewsData) => {
+        if (!reviewsData || reviewsData.length === 0) {
+            setStats({
+                average: 0,
+                total: 0,
+                breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+            });
+            return;
+        }
+
+        const total = reviewsData.length;
+        const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        let sum = 0;
+
+        reviewsData.forEach((review) => {
+            const rating = Math.round(review.rating);
+            breakdown[rating] = (breakdown[rating] || 0) + 1;
+            sum += review.rating;
+        });
+
+        const average = (sum / total).toFixed(1);
+
+        setStats({
+            average: parseFloat(average),
+            total,
+            breakdown,
+        });
+    };
 
     const filteredReviews = reviews.filter((review) => {
         if (activeFilter === 'all') return true;
-        return review.rating === parseInt(activeFilter);
+        return Math.round(review.rating) === parseInt(activeFilter);
     });
 
     const getPercentage = (count) => {
@@ -110,47 +194,92 @@ export default function ReviewsScreen({ navigation }) {
         );
     };
 
-    const renderReview = ({ item }) => (
-        <View style={styles.reviewCard}>
-            <View style={styles.reviewHeader}>
-                <View style={styles.reviewerInfo}>
-                    <Ionicons name="person-circle" size={40} color="#FF6B35" />
-                    <View style={styles.reviewerDetails}>
-                        <Text style={styles.reviewerName}>{item.customer}</Text>
-                        <View style={styles.ratingRow}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <Ionicons
-                                    key={star}
-                                    name={star <= item.rating ? 'star' : 'star-outline'}
-                                    size={14}
-                                    color="#FFB800"
-                                />
-                            ))}
-                            <Text style={styles.reviewDate}> • {item.date}</Text>
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    const renderReview = ({ item }) => {
+        const customerName = item.reviewerName || 'Khách hàng';
+        const displayRating = Math.round(item.rating);
+        
+        return (
+            <View style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                    <View style={styles.reviewerInfo}>
+                        <Ionicons name="person-circle" size={40} color="#FF6B35" />
+                        <View style={styles.reviewerDetails}>
+                            <Text style={styles.reviewerName}>{customerName}</Text>
+                            <View style={styles.ratingRow}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Ionicons
+                                        key={star}
+                                        name={star <= displayRating ? 'star' : 'star-outline'}
+                                        size={14}
+                                        color="#FFB800"
+                                    />
+                                ))}
+                                <Text style={styles.reviewDate}> • {formatDate(item.createdAt)}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
-            </View>
 
-            <View style={styles.serviceTag}>
-                <Ionicons name="construct" size={14} color="#666" />
-                <Text style={styles.serviceText}>{item.service}</Text>
-            </View>
+                {/* Detailed Ratings */}
+                <View style={styles.detailedRatings}>
+                    {item.punctualityRating && (
+                        <View style={styles.ratingDetail}>
+                            <Text style={styles.ratingLabel}>Đúng giờ:</Text>
+                            <Text style={styles.ratingValue}>{item.punctualityRating}/5</Text>
+                        </View>
+                    )}
+                    {item.qualityRating && (
+                        <View style={styles.ratingDetail}>
+                            <Text style={styles.ratingLabel}>Chất lượng:</Text>
+                            <Text style={styles.ratingValue}>{item.qualityRating}/5</Text>
+                        </View>
+                    )}
+                    {item.friendlinessRating && (
+                        <View style={styles.ratingDetail}>
+                            <Text style={styles.ratingLabel}>Thân thiện:</Text>
+                            <Text style={styles.ratingValue}>{item.friendlinessRating}/5</Text>
+                        </View>
+                    )}
+                </View>
 
-            <Text style={styles.reviewComment}>{item.comment}</Text>
+                {item.comment ? (
+                    <Text style={styles.reviewComment}>{item.comment}</Text>
+                ) : (
+                    <Text style={styles.noComment}>Không có nhận xét</Text>
+                )}
 
-            <View style={styles.reviewFooter}>
-                <TouchableOpacity style={styles.helpfulButton}>
-                    <Ionicons name="thumbs-up-outline" size={16} color="#666" />
-                    <Text style={styles.helpfulText}>Hữu ích ({item.helpful})</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.replyButton}>
-                    <Ionicons name="chatbubble-outline" size={16} color="#2196F3" />
-                    <Text style={styles.replyText}>Phản hồi</Text>
-                </TouchableOpacity>
+                {item.workerResponse && (
+                    <View style={styles.responseBox}>
+                        <Text style={styles.responseLabel}>Phản hồi của bạn:</Text>
+                        <Text style={styles.responseText}>{item.workerResponse}</Text>
+                        {item.responseAt && (
+                            <Text style={styles.responseDate}>
+                                {formatDate(item.responseAt)}
+                            </Text>
+                        )}
+                    </View>
+                )}
+
+                {!item.workerResponse && (
+                    <TouchableOpacity 
+                        style={styles.respondButton}
+                        onPress={() => handleRespondToReview(item)}
+                    >
+                        <Ionicons name="chatbox-outline" size={16} color="#FF6B35" />
+                        <Text style={styles.respondButtonText}>Phản hồi đánh giá</Text>
+                    </TouchableOpacity>
+                )}
             </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -165,31 +294,44 @@ export default function ReviewsScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                data={filteredReviews}
-                renderItem={renderReview}
-                keyExtractor={(item) => item.id.toString()}
-                showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    <>
-                        {/* Stats Card */}
-                        <View style={styles.statsCard}>
-                            <View style={styles.averageSection}>
-                                <Text style={styles.averageScore}>{stats.average}</Text>
-                                <View style={styles.starsContainer}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Ionicons
-                                            key={star}
-                                            name="star"
-                                            size={20}
-                                            color="#FFB800"
-                                        />
-                                    ))}
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#FF6B35" />
+                    <Text style={styles.loadingText}>Đang tải đánh giá...</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredReviews}
+                    renderItem={renderReview}
+                    keyExtractor={(item) => item.reviewId?.toString() || Math.random().toString()}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#FF6B35']}
+                        />
+                    }
+                    ListHeaderComponent={
+                        <>
+                            {/* Stats Card */}
+                            <View style={styles.statsCard}>
+                                <View style={styles.averageSection}>
+                                    <Text style={styles.averageScore}>{stats.average ? stats.average.toFixed(1) : '0.0'}</Text>
+                                    <View style={styles.starsContainer}>
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Ionicons
+                                                key={star}
+                                                name="star"
+                                                size={20}
+                                                color="#FFB800"
+                                            />
+                                        ))}
+                                    </View>
+                                    <Text style={styles.totalReviews}>
+                                        {stats.total} đánh giá
+                                    </Text>
                                 </View>
-                                <Text style={styles.totalReviews}>
-                                    {stats.total} đánh giá
-                                </Text>
-                            </View>
 
                             <View style={styles.breakdownSection}>
                                 {[5, 4, 3, 2, 1].map((star) => renderStarBar(star))}
@@ -250,7 +392,113 @@ export default function ReviewsScreen({ navigation }) {
                         </View>
                     </>
                 }
+                ListEmptyComponent={
+                    !loading && (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="star-outline" size={60} color="#CCC" />
+                            <Text style={styles.emptyText}>Chưa có đánh giá nào</Text>
+                            <Text style={styles.emptySubText}>
+                                Hoàn thành công việc để nhận đánh giá từ khách hàng
+                            </Text>
+                        </View>
+                    )
+                }
             />
+            )}
+
+            {/* Response Modal */}
+            <Modal
+                visible={responseModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={closeResponseModal}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalContainer}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={closeResponseModal}
+                    >
+                        <TouchableOpacity
+                            activeOpacity={1}
+                            onPress={() => {}}
+                            style={styles.modalContent}
+                        >
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Phản hồi đánh giá</Text>
+                                <TouchableOpacity onPress={closeResponseModal}>
+                                    <Ionicons name="close" size={24} color="#333" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {selectedReview && (
+                                <View style={styles.reviewSummary}>
+                                    <View style={styles.reviewSummaryHeader}>
+                                        <Ionicons name="person-circle" size={32} color="#FF6B35" />
+                                        <Text style={styles.reviewSummaryName}>
+                                            {selectedReview.reviewerName || 'Khách hàng'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.reviewSummaryRating}>
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Ionicons
+                                                key={star}
+                                                name={star <= Math.round(selectedReview.rating) ? 'star' : 'star-outline'}
+                                                size={16}
+                                                color="#FFB800"
+                                            />
+                                        ))}
+                                    </View>
+                                    {selectedReview.comment && (
+                                        <Text style={styles.reviewSummaryComment}>
+                                            "{selectedReview.comment}"
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+
+                            <TextInput
+                                style={styles.responseInput}
+                                placeholder="Nhập phản hồi của bạn..."
+                                placeholderTextColor="#999"
+                                value={responseText}
+                                onChangeText={setResponseText}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                                maxLength={500}
+                            />
+                            <Text style={styles.characterCount}>
+                                {responseText.length}/500
+                            </Text>
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={closeResponseModal}
+                                    disabled={submitting}
+                                >
+                                    <Text style={styles.cancelButtonText}>Hủy</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.submitButton]}
+                                    onPress={submitResponse}
+                                    disabled={submitting || !responseText.trim()}
+                                >
+                                    {submitting ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text style={styles.submitButtonText}>Gửi</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -420,52 +668,208 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#999',
     },
-    serviceTag: {
+    detailedRatings: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8F9FA',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        gap: 5,
+        gap: 15,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#F0F0F0',
         marginBottom: 12,
     },
-    serviceText: {
+    ratingDetail: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    ratingLabel: {
         fontSize: 12,
         color: '#666',
-        fontWeight: '500',
+    },
+    ratingValue: {
+        fontSize: 13,
+        color: '#FF6B35',
+        fontWeight: '600',
     },
     reviewComment: {
         fontSize: 14,
         color: '#333',
         lineHeight: 22,
-        marginBottom: 15,
+        marginBottom: 10,
     },
-    reviewFooter: {
-        flexDirection: 'row',
-        gap: 15,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#F0F0F0',
+    noComment: {
+        fontSize: 14,
+        color: '#999',
+        fontStyle: 'italic',
+        marginBottom: 10,
     },
-    helpfulButton: {
+    responseBox: {
+        backgroundColor: '#F8F9FA',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 10,
+        borderLeftWidth: 3,
+        borderLeftColor: '#FF6B35',
+    },
+    responseLabel: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: '600',
+        marginBottom: 5,
+    },
+    responseText: {
+        fontSize: 13,
+        color: '#333',
+        lineHeight: 20,
+    },
+    responseDate: {
+        fontSize: 11,
+        color: '#999',
+        marginTop: 5,
+    },
+    respondButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FF6B35',
+        marginTop: 10,
+        gap: 8,
     },
-    helpfulText: {
-        fontSize: 13,
+    respondButtonText: {
+        fontSize: 14,
+        color: '#FF6B35',
+        fontWeight: '600',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
         color: '#666',
     },
-    replyButton: {
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        paddingHorizontal: 30,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+        marginTop: 15,
+        marginBottom: 5,
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        padding: 25,
+        paddingBottom: 35,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    reviewSummary: {
+        backgroundColor: '#F8F9FA',
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 20,
+    },
+    reviewSummaryHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
+        gap: 10,
+        marginBottom: 8,
     },
-    replyText: {
-        fontSize: 13,
-        color: '#2196F3',
-        fontWeight: '500',
+    reviewSummaryName: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#333',
+    },
+    reviewSummaryRating: {
+        flexDirection: 'row',
+        gap: 3,
+        marginBottom: 8,
+    },
+    reviewSummaryComment: {
+        fontSize: 14,
+        color: '#666',
+        fontStyle: 'italic',
+        lineHeight: 20,
+    },
+    responseInput: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        padding: 15,
+        fontSize: 15,
+        color: '#333',
+        minHeight: 120,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    characterCount: {
+        textAlign: 'right',
+        fontSize: 12,
+        color: '#999',
+        marginTop: 5,
+        marginBottom: 20,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 15,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#F0F0F0',
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+    },
+    submitButton: {
+        backgroundColor: '#FF6B35',
+    },
+    submitButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: 'white',
     },
 });

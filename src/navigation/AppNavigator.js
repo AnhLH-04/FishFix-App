@@ -28,6 +28,9 @@ import InstantBookingConfirmationScreen from '../screens/customer/InstantBooking
 import JobBidsScreen from '../screens/customer/JobBidsScreen';
 import JobTrackingScreen from '../screens/customer/JobTrackingScreen';
 import PaymentScreen from '../screens/customer/PaymentScreen';
+import PaymentResultScreen from '../screens/customer/PaymentResultScreen';
+import SepayQRScreen from '../screens/customer/SepayQRScreen';
+import BookingHistoryScreen from '../screens/customer/BookingHistoryScreen';
 
 // Common Screens
 import BookingsScreen from '../screens/BookingsScreen';
@@ -45,6 +48,7 @@ import IncomingRequestScreen from '../screens/technician/IncomingRequestScreen';
 import ActiveJobScreen from '../screens/technician/ActiveJobScreen';
 import JobCompletionScreen from '../screens/technician/JobCompletionScreen';
 import ReviewsScreen from '../screens/technician/ReviewsScreen';
+import WorkerBookingsScreen from '../screens/technician/WorkerBookingsScreen';
 import ManageCertificationsScreen from '../screens/technician/ManageCertificationsScreen';
 import ManageSkillsScreen from '../screens/technician/ManageSkillsScreen';
 import WorkerProfileSetupScreen from '../screens/technician/WorkerProfileSetupScreen';
@@ -94,6 +98,12 @@ function HomeStack() {
             <Stack.Screen name="Booking" component={BookingScreen} />
             <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
             <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+            <Stack.Screen name="JobBids" component={JobBidsScreen} />
+            <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -107,6 +117,9 @@ function BookingsStack() {
             <Stack.Screen name="JobBids" component={JobBidsScreen} />
             <Stack.Screen name="JobTracking" component={JobTrackingScreen} />
             <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="SepayQR" component={SepayQRScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -125,6 +138,7 @@ function ProfileStack() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
         </Stack.Navigator>
     );
 }
@@ -300,6 +314,18 @@ function TechnicianProfileStack() {
     );
 }
 
+// Technician History Stack Navigator
+function TechnicianHistoryStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="WorkerBookings" component={WorkerBookingsScreen} />
+            <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} />
+            <Stack.Screen name="ActiveJob" component={ActiveJobScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+        </Stack.Navigator>
+    );
+}
+
 // Bottom Tab Navigator for Technician
 function TechnicianTabs() {
     const { View, TouchableOpacity, StyleSheet } = require('react-native');
@@ -315,8 +341,8 @@ function TechnicianTabs() {
                         iconName = focused ? 'home' : 'home-outline';
                     } else if (route.name === 'TechnicianJobsTab') {
                         iconName = focused ? 'hammer' : 'hammer-outline';
-                    } else if (route.name === 'TechnicianMessagesTab') {
-                        iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+                    } else if (route.name === 'TechnicianHistoryTab') {
+                        iconName = focused ? 'time' : 'time-outline';
                     } else if (route.name === 'TechnicianProfileTab') {
                         iconName = focused ? 'person' : 'person-outline';
                     }
@@ -350,9 +376,9 @@ function TechnicianTabs() {
                 options={{ tabBarLabel: 'Công Việc' }}
             />
             <Tab.Screen
-                name="TechnicianMessagesTab"
-                component={TechnicianStack}
-                options={{ tabBarLabel: 'Tin Nhắn' }}
+                name="TechnicianHistoryTab"
+                component={TechnicianHistoryStack}
+                options={{ tabBarLabel: 'Lịch Sử' }}
             />
             <Tab.Screen
                 name="TechnicianProfileTab"

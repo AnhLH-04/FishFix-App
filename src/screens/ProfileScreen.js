@@ -172,7 +172,17 @@ const ProfileScreen = ({ navigation }) => {
                 {/* Menu Items */}
                 <View style={styles.menuContainer}>
                     {menuItems.map((item) => (
-                        <TouchableOpacity key={item.id} style={styles.menuItem}>
+                        <TouchableOpacity 
+                            key={item.id} 
+                            style={styles.menuItem}
+                            onPress={() => {
+                                if (item.id === 2) {
+                                    // Lịch sử đặt lịch
+                                    navigation.navigate('BookingHistory');
+                                }
+                                // Thêm các navigation khác ở đây nếu cần
+                            }}
+                        >
                             <View
                                 style={[
                                     styles.menuIconContainer,

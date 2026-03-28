@@ -5,6 +5,8 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    Platform,
+    StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,14 +45,18 @@ const BookingTypeScreen = ({ route, navigation }) => {
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 >
-                    <Ionicons name="arrow-back" size={24} color="#333" />
+                    <Ionicons name="arrow-back" size={22} color="#2A3242" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Chọn Loại Đặt Lịch</Text>
-                <View style={{ width: 40 }} />
+                <View style={styles.headerPlaceholder} />
             </View>
 
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                <View style={styles.content}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+            >
+                <View>
                     {/* Service Info */}
                     {serviceDetail && (
                         <View style={styles.serviceInfoCard}>
@@ -73,6 +79,8 @@ const BookingTypeScreen = ({ route, navigation }) => {
                         </View>
                     )}
 
+                    <Text style={styles.sectionTitle}>Chọn hình thức phù hợp</Text>
+
                     {/* Instant Booking Card */}
                     <TouchableOpacity
                         style={styles.card}
@@ -80,34 +88,44 @@ const BookingTypeScreen = ({ route, navigation }) => {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={['#FF6B6B', '#FF8E53']}
+                            colors={['#FFFFFF', '#F3F8FF']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.cardGradient}
                         >
-                            <View style={styles.iconContainer}>
-                                <Ionicons name="flash" size={40} color="#fff" />
+                            <View style={styles.cardTopRow}>
+                                <View style={styles.iconContainer}>
+                                    <Ionicons name="flash" size={28} color="#2563EB" />
+                                </View>
+                                <View style={styles.recommendBadge}>
+                                    <Text style={styles.recommendText}>PHỔ BIẾN</Text>
+                                </View>
                             </View>
+
                             <View style={styles.cardContent}>
-                                <Text style={styles.cardTitle}>Đặt Lịch Ngay</Text>
+                                <Text style={styles.cardTitle}>Tìm Thợ Ngay</Text>
                                 <Text style={styles.cardSubtitle}>Thợ đến trong 30-60 phút</Text>
                                 <View style={styles.featureList}>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
                                         <Text style={styles.featureText}>Thợ gần bạn đang rảnh</Text>
                                     </View>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
                                         <Text style={styles.featureText}>Xử lý khẩn cấp ngay</Text>
                                     </View>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
                                         <Text style={styles.featureText}>Không cần chờ đợi</Text>
                                     </View>
                                 </View>
                             </View>
-                            <View style={styles.recommendBadge}>
-                                <Text style={styles.recommendText}>PHỔ BIẾN</Text>
+
+                            <View style={styles.cardActionRow}>
+                                <View style={styles.cardActionButton}>
+                                    <Text style={styles.cardActionText}>Tiếp tục</Text>
+                                    <Ionicons name="arrow-forward" size={14} color="#fff" />
+                                </View>
                             </View>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -119,30 +137,40 @@ const BookingTypeScreen = ({ route, navigation }) => {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={['#667eea', '#764ba2']}
+                            colors={['#FFFFFF', '#EEF4FF']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={styles.cardGradient}
                         >
-                            <View style={styles.iconContainer}>
-                                <Ionicons name="calendar" size={40} color="#fff" />
+                            <View style={styles.cardTopRow}>
+                                <View style={styles.iconContainer}>
+                                    <Ionicons name="calendar" size={28} color="#4F46E5" />
+                                </View>
                             </View>
+
                             <View style={styles.cardContent}>
                                 <Text style={styles.cardTitle}>Đặt Lịch Hẹn</Text>
                                 <Text style={styles.cardSubtitle}>Chọn thời gian phù hợp</Text>
                                 <View style={styles.featureList}>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
                                         <Text style={styles.featureText}>Chọn thợ yêu thích</Text>
                                     </View>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
                                         <Text style={styles.featureText}>Lên lịch trước 1-7 ngày</Text>
                                     </View>
                                     <View style={styles.featureItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                        <Ionicons name="checkmark-circle" size={16} color="#6366F1" />
                                         <Text style={styles.featureText}>Linh hoạt thời gian</Text>
                                     </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.cardActionRow}>
+                                <View style={styles.cardActionButton}>
+                                    <Text style={styles.cardActionText}>Tiếp tục</Text>
+                                    <Ionicons name="arrow-forward" size={14} color="#fff" />
                                 </View>
                             </View>
                         </LinearGradient>
@@ -168,81 +196,85 @@ const BookingTypeScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f7fa',
+        backgroundColor: '#F6F8FC',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 20,
+        paddingHorizontal: 18,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 44,
+        paddingBottom: 16,
         backgroundColor: '#fff',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EFF3FA',
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f5f7fa',
+        backgroundColor: '#F2F5FB',
         alignItems: 'center',
         justifyContent: 'center',
     },
+    headerPlaceholder: {
+        width: 40,
+    },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
+        fontSize: 21,
+        fontWeight: '700',
+        color: '#1F2937',
     },
     scrollView: {
         flex: 1,
     },
     content: {
-        padding: 20,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 124,
     },
     serviceInfoCard: {
         backgroundColor: '#fff',
-        padding: 20,
+        padding: 16,
         borderRadius: 16,
-        marginBottom: 24,
-        elevation: 2,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#EAF0F8',
+        elevation: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOpacity: 0.04,
+        shadowRadius: 5,
     },
     serviceHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 12,
+        marginBottom: 10,
     },
     serviceLabel: {
-        fontSize: 13,
-        color: '#666',
-        fontWeight: '500',
+        fontSize: 12,
+        color: '#64748B',
+        fontWeight: '600',
     },
     serviceName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
+        fontSize: 19,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 6,
     },
     serviceDescription: {
-        fontSize: 14,
-        color: '#666',
-        lineHeight: 20,
-        marginBottom: 12,
+        fontSize: 13,
+        color: '#64748B',
+        lineHeight: 19,
+        marginBottom: 10,
     },
     serviceDetails: {
         flexDirection: 'row',
         gap: 16,
-        paddingTop: 12,
+        paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: '#EEF2F7',
     },
     detailItem: {
         flexDirection: 'row',
@@ -251,81 +283,117 @@ const styles = StyleSheet.create({
     },
     detailText: {
         fontSize: 13,
-        color: '#666',
+        color: '#475569',
         fontWeight: '500',
     },
+    sectionTitle: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '600',
+        marginBottom: 10,
+        marginLeft: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+    },
     card: {
-        marginBottom: 20,
+        marginBottom: 12,
         borderRadius: 20,
         overflow: 'hidden',
-        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#E6EEF9',
+        elevation: 1,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
     },
     cardGradient: {
-        padding: 24,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
         position: 'relative',
     },
+    cardTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: '#EAF2FF',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
     },
     cardContent: {
-        marginBottom: 8,
+        marginBottom: 12,
     },
     cardTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: 4,
+        fontSize: 30,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 3,
     },
     cardSubtitle: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.9)',
-        marginBottom: 16,
+        color: '#64748B',
+        marginBottom: 12,
     },
     featureList: {
-        gap: 8,
+        gap: 7,
     },
     featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 7,
     },
     featureText: {
         fontSize: 13,
-        color: '#fff',
+        color: '#334155',
         flex: 1,
     },
-    recommendBadge: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    cardActionRow: {
+        marginTop: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+    },
+    cardActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#2563EB',
+        borderRadius: 20,
         paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingVertical: 6,
+    },
+    cardActionText: {
+        fontSize: 12,
+        color: '#FFFFFF',
+        fontWeight: '600',
+    },
+    recommendBadge: {
+        backgroundColor: '#E0ECFF',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 11,
     },
     recommendText: {
         fontSize: 10,
-        fontWeight: 'bold',
-        color: '#fff',
-        letterSpacing: 1,
+        fontWeight: '700',
+        color: '#1D4ED8',
+        letterSpacing: 0.8,
     },
     infoBox: {
         flexDirection: 'row',
         backgroundColor: '#fff',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 14,
         gap: 12,
-        marginTop: 8,
+        marginTop: 6,
+        borderWidth: 1,
+        borderColor: '#EAF0F8',
     },
     infoContent: {
         flex: 1,
@@ -333,13 +401,13 @@ const styles = StyleSheet.create({
     infoTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: '#1E293B',
         marginBottom: 4,
     },
     infoText: {
         fontSize: 13,
-        color: '#666',
-        lineHeight: 18,
+        color: '#64748B',
+        lineHeight: 19,
     },
 });
 

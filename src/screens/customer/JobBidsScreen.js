@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Alert,
     RefreshControl,
@@ -17,6 +16,7 @@ import { getJobById, updateJobStatus } from '../../services/jobService';
 import { useAuth } from '../../context/AuthContext';
 import { notifyWorkerNewBooking } from '../../services/notificationService';
 import workerService from '../../services/workerService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function JobBidsScreen({ route, navigation }) {
     const { jobId, jobTitle } = route.params;

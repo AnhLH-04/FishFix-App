@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ActivityIndicator,
     RefreshControl,
@@ -15,6 +14,7 @@ import { Colors } from '../../utils/colors';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../services/apiClient';
 import workerService from '../../services/workerService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TechnicianHomeScreen({ navigation }) {
     const { user, logout } = useAuth();
@@ -142,7 +142,7 @@ export default function TechnicianHomeScreen({ navigation }) {
     const quickActions = [
         { icon: 'search', label: 'Tìm việc', screen: 'NearbyJobs', color: '#FF6B35' },
         { icon: 'calendar', label: 'Lịch làm việc', screen: 'Schedule', color: '#2196F3' },
-        { icon: 'location', label: 'Việc gần đây', screen: 'NearbyJobs', color: '#4CAF50' },
+        { icon: 'star', label: 'Đánh giá', screen: 'Reviews', color: '#FFB800' },
         { icon: 'card', label: 'Thu nhập', screen: 'Earnings', color: '#9C27B0' },
     ];
 

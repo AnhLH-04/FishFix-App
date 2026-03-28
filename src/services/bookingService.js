@@ -185,6 +185,21 @@ export const getBookingByBidId = async (bidId) => {
     }
 };
 
+/**
+ * Lấy danh sách bookings theo customerId hoặc workerId
+ * @param {Object} params - { customerId?, workerId? }
+ * @returns {Promise<Array>} Array of bookings
+ */
+export const getBookings = async (params) => {
+    try {
+        const response = await apiClient.get('/api/bookings', { params });
+        return response.data;
+    } catch (error) {
+        console.error('❌ Get bookings error:', error);
+        throw error;
+    }
+};
+
 export default {
     createBooking,
     createPayment,
@@ -195,4 +210,5 @@ export default {
     updateBookingStatus,
     getBookingById,
     getBookingByBidId,
+    getBookings,
 };

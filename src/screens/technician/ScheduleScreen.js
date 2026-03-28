@@ -1,54 +1,198 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
+    ActivityIndicator,
+    RefreshControl,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext';
+import workerService from '../../services/workerService';
+import apiClient from '../../services/apiClient';
 
 export default function ScheduleScreen({ navigation }) {
-    const schedule = [
-        {
-            date: '31/12/2025',
-            day: 'Hôm nay',
-            jobs: [
-                {
-                    id: 1,
-                    time: '09:00',
-                    service: 'Sửa máy lạnh',
-                    customer: 'Nguyễn Văn A',
-                    address: '123 Nguyễn Văn Linh, Q.7',
-                    status: 'upcoming',
-                },
-                {
-                    id: 2,
-                    time: '14:00',
-                    service: 'Bảo trì tủ lạnh',
-                    customer: 'Trần Thị B',
-                    address: '456 Lê Văn Việt, Q.9',
-                    status: 'upcoming',
-                },
-            ],
-        },
-        {
-            date: '01/01/2026',
-            day: 'Mai',
-            jobs: [
-                {
-                    id: 3,
-                    time: '10:00',
-                    service: 'Sửa bếp gas',
-                    customer: 'Lê Văn C',
-                    address: '789 Võ Văn Ngân, Thủ Đức',
-                    status: 'upcoming',
-                },
-            ],
-        },
-    ];
+    const { user } = useAuth();
+    const [rawBookings, setRawBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [workerId, setWorkerId] = useState(null);
+
+    const normalizeStatus = (status) => {
+        const value = String(status || '').toLowerCase();
+
+        if (['completed', 'paid'].includes(value)) return 'completed';
+        if (['in_progress', 'in-progress', 'arrived', 'on_the_way'].includes(value)) return 'in-progress';
+        if (['confirmed', 'pending', 'assigned'].includes(value)) return 'upcoming';
+        if (['cancelled', 'canceled'].includes(value)) return 'cancelled';
+
+        return 'upcoming';
+    };
+
+    const getAddress = (booking) => {
+        const jobAddress = booking?.Job?.address || booking?.address || booking?.jobAddress || '';
+        const ward = booking?.Job?.ward || booking?.ward || '';
+        const district = booking?.Job?.district || booking?.district || '';
+
+        const parts = [jobAddress, ward, district].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : 'Địa chỉ chưa cập nhật';
+    };
+
+    const parseScheduleDate = (dateString) => {
+        if (!dateString) return null;
+
+        if (dateString.includes('/')) {
+            const [dd, mm, yyyy] = dateString.split('/').map(Number);
+            if (!dd || !mm || !yyyy) return null;
+            return new Date(yyyy, mm - 1, dd);
+        }
+
+        const parsed = new Date(dateString);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed;
+    };
+
+    const toDateKey = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatDateDisplay = (date) => {
+        return date.toLocaleDateString('vi-VN');
+    };
+
+    const getDayLabel = (date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const inputDate = new Date(date);
+        inputDate.setHours(0, 0, 0, 0);
+
+        if (inputDate.getTime() === today.getTime()) return 'Hôm nay';
+        if (inputDate.getTime() === tomorrow.getTime()) return 'Ngày mai';
+
+        return inputDate.toLocaleDateString('vi-VN', { weekday: 'long' });
+    };
+
+    const formatTime = (timeValue) => {
+        if (!timeValue) return '--:--';
+        if (timeValue.length >= 5) return timeValue.slice(0, 5);
+        return timeValue;
+    };
+
+    const schedule = useMemo(() => {
+        const grouped = {};
+
+        rawBookings
+            .forEach((booking) => {
+                const dateValue = parseScheduleDate(booking?.scheduledDate);
+                const safeDate = dateValue || new Date();
+                const dateKey = toDateKey(safeDate);
+
+                if (!grouped[dateKey]) {
+                    grouped[dateKey] = {
+                        dateKey,
+                        dateObj: safeDate,
+                        date: formatDateDisplay(safeDate),
+                        day: getDayLabel(safeDate),
+                        jobs: [],
+                    };
+                }
+
+                grouped[dateKey].jobs.push({
+                    id: booking?.bookingId || booking?.id,
+                    bookingId: booking?.bookingId,
+                    jobId: booking?.jobId,
+                    rawBooking: booking,
+                    time: formatTime(booking?.scheduledTimeStart),
+                    service: booking?.Job?.title || booking?.serviceName || 'Dịch vụ sửa chữa',
+                    customer: booking?.Customer?.fullName || booking?.customerName || 'Khách hàng',
+                    address: getAddress(booking),
+                    status: normalizeStatus(booking?.status),
+                });
+            });
+
+        const sortedDays = Object.values(grouped).sort((a, b) => a.dateObj - b.dateObj);
+        sortedDays.forEach((day) => {
+            day.jobs.sort((a, b) => a.time.localeCompare(b.time));
+        });
+
+        return sortedDays;
+    }, [rawBookings]);
+
+    const fetchWorkerId = useCallback(async () => {
+        if (!user?.id) return null;
+
+        if (user?.workerId) {
+            setWorkerId(user.workerId);
+            return user.workerId;
+        }
+
+        try {
+            const profile = await workerService.getWorkerByUserId(user.id);
+            const resolvedWorkerId = profile?.workerId || user.id;
+            setWorkerId(resolvedWorkerId);
+            return resolvedWorkerId;
+        } catch (error) {
+            console.warn('⚠️ Không lấy được workerId từ profile, fallback user.id');
+            setWorkerId(user.id);
+            return user.id;
+        }
+    }, [user?.id, user?.workerId]);
+
+    const fetchSchedule = useCallback(async (silent = false) => {
+        try {
+            if (!silent) setLoading(true);
+
+            const resolvedWorkerId = await fetchWorkerId();
+            if (!resolvedWorkerId) {
+                setRawBookings([]);
+                return;
+            }
+
+            const response = await apiClient.get('/api/bookings', {
+                params: { workerId: resolvedWorkerId },
+            });
+
+            let bookings = response?.data || [];
+
+            // Fallback: một số môi trường map workerId = userId
+            if (bookings.length === 0 && user?.id && resolvedWorkerId !== user.id) {
+                const fallbackResponse = await apiClient.get('/api/bookings', {
+                    params: { workerId: user.id },
+                });
+                bookings = fallbackResponse?.data || [];
+            }
+
+        } catch (error) {
+            console.error('❌ Lỗi tải lịch làm việc:', error);
+            if (!silent) {
+                Alert.alert('Lỗi', 'Không thể tải lịch làm việc. Vui lòng thử lại.');
+            }
+        } finally {
+            if (!silent) setLoading(false);
+            setRefreshing(false);
+        }
+    }, [fetchWorkerId, user?.id]);
+
+    useEffect(() => {
+        fetchSchedule();
+    }, [fetchSchedule]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchSchedule(true);
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -58,6 +202,8 @@ export default function ScheduleScreen({ navigation }) {
                 return '#2196F3';
             case 'upcoming':
                 return '#FF9800';
+            case 'cancelled':
+                return '#F44336';
             default:
                 return '#999';
         }
@@ -71,6 +217,8 @@ export default function ScheduleScreen({ navigation }) {
                 return 'Đang làm';
             case 'upcoming':
                 return 'Sắp tới';
+            case 'cancelled':
+                return 'Đã hủy';
             default:
                 return '';
         }
@@ -88,9 +236,20 @@ export default function ScheduleScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Đang tải lịch làm việc...</Text>
+                </View>
+            ) : (
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
                 {schedule.map((daySchedule, dayIndex) => (
-                    <View key={dayIndex} style={styles.daySection}>
+                    <View key={daySchedule.dateKey || dayIndex} style={styles.daySection}>
                         <View style={styles.dayHeader}>
                             <Text style={styles.dayText}>{daySchedule.day}</Text>
                             <Text style={styles.dateText}>{daySchedule.date}</Text>
@@ -105,7 +264,13 @@ export default function ScheduleScreen({ navigation }) {
                             <TouchableOpacity
                                 key={job.id}
                                 style={styles.jobCard}
-                                onPress={() => navigation.navigate('JobDetail', { job })}
+                                onPress={() =>
+                                    navigation.navigate('JobDetail', {
+                                        jobId: job.jobId,
+                                        job: job.rawBooking?.Job || job.rawBooking,
+                                        booking: job.rawBooking,
+                                    })
+                                }
                             >
                                 <View style={styles.timeSection}>
                                     <Ionicons name="time" size={20} color="#FF6B35" />
@@ -170,9 +335,11 @@ export default function ScheduleScreen({ navigation }) {
                     <View style={styles.emptyState}>
                         <Ionicons name="calendar-outline" size={80} color="#DDD" />
                         <Text style={styles.emptyText}>Chưa có lịch làm việc</Text>
+                        <Text style={styles.emptySubText}>Kéo xuống để tải lại dữ liệu</Text>
                     </View>
                 )}
             </ScrollView>
+            )}
         </SafeAreaView>
     );
 }
@@ -198,6 +365,16 @@ const styles = StyleSheet.create({
     },
     daySection: {
         marginTop: 10,
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    loadingText: {
+        fontSize: 14,
+        color: '#666',
     },
     dayHeader: {
         flexDirection: 'row',
@@ -313,5 +490,10 @@ const styles = StyleSheet.create({
         marginTop: 20,
         fontSize: 16,
         color: '#999',
+    },
+    emptySubText: {
+        marginTop: 8,
+        fontSize: 13,
+        color: '#BBB',
     },
 });

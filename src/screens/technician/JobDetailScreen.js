@@ -5,7 +5,6 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    SafeAreaView,
     ActivityIndicator,
     Alert,
     Image,
@@ -21,6 +20,7 @@ import locationService from '../../services/locationService';
 import bidService from '../../services/bidService';
 import workerService from '../../services/workerService';
 import { useAuth } from '../../context/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function JobDetailScreen({ route, navigation }) {
     const { jobId, job: passedJob } = route.params || {};
@@ -372,8 +372,6 @@ export default function JobDetailScreen({ route, navigation }) {
                         </Text>
                     </View>
                 </View>
-            </ScrollView>
-            </TouchableWithoutFeedback>
 
             {/* Bid Form */}
             <View style={styles.bidFormSection}>
@@ -446,6 +444,8 @@ export default function JobDetailScreen({ route, navigation }) {
                     )}
                 </TouchableOpacity>
             </View>
+            </ScrollView>
+            </TouchableWithoutFeedback>
         </SafeAreaView>
     );
 }
